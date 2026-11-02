@@ -3,10 +3,10 @@
 > Mecánicos certificados a domicilio en San Pedro Garza García y área metropolitana de Monterrey.
 
 **Producción:** https://spm-platform.vercel.app  
-**Repositorio:** https://github.com/zoharmx/spm-platform  
+**Repositorio:** https://github.com/tofaiconsultingservices-cell/spm-platform<br>
 **Stack:** Next.js 16 · TypeScript · Tailwind CSS v4 · Firebase · Gemini AI · Stripe · Twilio · Vercel  
 **Versión:** 1.3.0  
-**CI:** ![CI](https://github.com/zoharmx/spm-platform/actions/workflows/ci.yml/badge.svg)
+**CI:** ![CI](https://github.com/tofaiconsultingservices-cell/spm-platform/actions/workflows/ci.yml/badge.svg)
 
 ---
 
@@ -145,7 +145,7 @@ Deploy a produccion en ~45 segundos via integracion Vercel.
 ## Setup local
 
 ```bash
-git clone https://github.com/zoharmx/spm-platform.git
+git clone https://github.com/tofaiconsultingservices-cell/spm-platform.git
 cd spm-platform
 npm install
 cp .env.example .env.local   # completar credenciales

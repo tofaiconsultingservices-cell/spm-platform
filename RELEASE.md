@@ -2,7 +2,7 @@
 
 **Fecha:** 18 de abril de 2026  
 **Produccion:** https://spm-platform.vercel.app  
-**Repositorio:** https://github.com/zoharmx/spm-platform  
+**Repositorio:** https://github.com/tofaiconsultingservices-cell/spm-platform<br>
 **Commits totales:** 47  
 **Tests:** 110 (14 archivos)  
 **Coverage:** Statements 87.85% · Branches 73.09% · Functions 74.50% · Lines 89.86%

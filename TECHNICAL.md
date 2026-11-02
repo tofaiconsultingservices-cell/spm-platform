@@ -3,7 +3,7 @@
 **Versión:** 1.3.0  
 **Fecha:** 18 de abril de 2026  
 **Producción:** https://spm-platform.vercel.app  
-**Repositorio:** https://github.com/zoharmx/spm-platform
+**Repositorio:** https://github.com/tofaiconsultingservices-cell/spm-platform
 
 ---
 
