@@ -1,0 +1,1290 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guía de uso SPM</title>
+<style>
+  /* ── Reset ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body, h1, h2, h3, h4, p, ul, ol, figure, blockquote, dl, dd { margin: 0; }
+  ul, ol { padding: 0; }
+  img, svg, video { display: block; max-width: 100%; }
+  button { font: inherit; cursor: pointer; }
+  a { color: inherit; }
+
+  /* ── Tokens: light (default) ───────────────────────── */
+  :root {
+    --bg: #FAFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F1F5F9;
+    --border: #E2E8F0;
+    --border-strong: #CBD5E1;
+    --text: #0F172A;
+    --text-muted: #475569;
+    --text-soft: #64748B;
+
+    --accent: #DC2626;
+    --accent-hover: #B91C1C;
+    --accent-soft: #FEE2E2;
+    --accent-ink: #7F1D1D;
+
+    --warning: #B45309;
+    --warning-soft: #FEF3C7;
+    --warning-ink: #78350F;
+
+    --success: #047857;
+    --success-soft: #D1FAE5;
+    --success-ink: #064E3B;
+
+    --info: #1D4ED8;
+    --info-soft: #DBEAFE;
+    --info-ink: #1E3A8A;
+
+    --mech: #0EA5E9;
+    --mech-soft: #E0F2FE;
+    --mech-ink: #0C4A6E;
+
+    --op: #DC2626;
+    --op-soft: #FEE2E2;
+    --op-ink: #7F1D1D;
+
+    --mgr: #7C3AED;
+    --mgr-soft: #EDE9FE;
+    --mgr-ink: #4C1D95;
+
+    --client: #059669;
+    --client-soft: #D1FAE5;
+    --client-ink: #064E3B;
+
+    --radius: 8px;
+    --radius-sm: 4px;
+    --radius-lg: 12px;
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 0 0 1px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.05);
+
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  /* ── Tokens: dark — follows OS only when no explicit choice ── */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B1220;
+      --surface: #111827;
+      --surface-2: #1E293B;
+      --border: #1F2A3A;
+      --border-strong: #334155;
+      --text: #F1F5F9;
+      --text-muted: #94A3B8;
+      --text-soft: #64748B;
+
+      --accent: #F87171;
+      --accent-hover: #FCA5A5;
+      --accent-soft: #3F1212;
+      --accent-ink: #FECACA;
+
+      --warning: #FBBF24;
+      --warning-soft: #422006;
+      --warning-ink: #FDE68A;
+
+      --success: #34D399;
+      --success-soft: #064E3B;
+      --success-ink: #A7F3D0;
+
+      --info: #60A5FA;
+      --info-soft: #1E3A8A;
+      --info-ink: #BFDBFE;
+
+      --mech: #38BDF8;
+      --mech-soft: #082F49;
+      --mech-ink: #BAE6FD;
+
+      --op: #F87171;
+      --op-soft: #3F1212;
+      --op-ink: #FECACA;
+
+      --mgr: #A78BFA;
+      --mgr-soft: #2E1065;
+      --mgr-ink: #DDD6FE;
+
+      --client: #34D399;
+      --client-soft: #064E3B;
+      --client-ink: #A7F3D0;
+
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+    }
+  }
+
+  /* ── Tokens: explicit dark wins in both directions ── */
+  :root[data-theme="dark"] {
+    --bg: #0B1220;
+    --surface: #111827;
+    --surface-2: #1E293B;
+    --border: #1F2A3A;
+    --border-strong: #334155;
+    --text: #F1F5F9;
+    --text-muted: #94A3B8;
+    --text-soft: #64748B;
+
+    --accent: #F87171;
+    --accent-hover: #FCA5A5;
+    --accent-soft: #3F1212;
+    --accent-ink: #FECACA;
+
+    --warning: #FBBF24;
+    --warning-soft: #422006;
+    --warning-ink: #FDE68A;
+
+    --success: #34D399;
+    --success-soft: #064E3B;
+    --success-ink: #A7F3D0;
+
+    --info: #60A5FA;
+    --info-soft: #1E3A8A;
+    --info-ink: #BFDBFE;
+
+    --mech: #38BDF8;
+    --mech-soft: #082F49;
+    --mech-ink: #BAE6FD;
+
+    --op: #F87171;
+    --op-soft: #3F1212;
+    --op-ink: #FECACA;
+
+    --mgr: #A78BFA;
+    --mgr-soft: #2E1065;
+    --mgr-ink: #DDD6FE;
+
+    --client: #34D399;
+    --client-soft: #064E3B;
+    --client-ink: #A7F3D0;
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+  }
+
+  /* ── Base typography ─────────────────────────────── */
+  html { font-size: 16px; }
+  body {
+    font-family: var(--font-sans);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1.18;
+    letter-spacing: -0.018em;
+    text-wrap: balance;
+  }
+
+  h1 { font-size: clamp(2rem, 4vw + 1rem, 3rem); letter-spacing: -0.025em; }
+  h2 { font-size: clamp(1.5rem, 1.5vw + 1rem, 1.875rem); }
+  h3 { font-size: 1.25rem; }
+  h4 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600; }
+
+  p { text-wrap: pretty; }
+  a { color: var(--accent); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--accent); }
+
+  code, kbd, .mono { font-family: var(--font-mono); font-size: 0.92em; font-variant-numeric: tabular-nums; }
+
+  /* ── Page wrapper ────────────────────────────────── */
+  .page { max-width: 78ch; margin: 0 auto; padding: 0 1.25rem; }
+
+  /* ── Top bar ─────────────────────────────────────── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: saturate(180%) blur(8px);
+    -webkit-backdrop-filter: saturate(180%) blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; padding: 0.75rem 1.25rem; max-width: 78ch; margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; letter-spacing: -0.01em; }
+  .brand-mark {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: var(--accent); color: white;
+    display: grid; place-items: center; font-size: 14px; font-weight: 800;
+  }
+  .theme-toggle {
+    background: transparent; border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+    padding: 0.4rem 0.7rem; border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+  }
+  .theme-toggle:hover { color: var(--text); border-color: var(--text-muted); }
+
+  /* ── Hero ────────────────────────────────────────── */
+  .hero { padding: 4rem 0 3rem; border-bottom: 1px solid var(--border); }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent);
+    padding: 0.35rem 0.7rem; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: 999px; background: var(--accent-soft); margin-bottom: 1.5rem;
+  }
+  .hero h1 { margin-bottom: 1rem; }
+  .hero p.lede { font-size: 1.15rem; color: var(--text-muted); max-width: 60ch; }
+  .hero-meta {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.75rem;
+    font-size: 0.85rem; color: var(--text-muted);
+  }
+  .hero-meta span { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+  /* ── Section ─────────────────────────────────────── */
+  section { padding: 3.5rem 0; border-bottom: 1px solid var(--border); }
+  section:last-of-type { border-bottom: 0; }
+  section > header { margin-bottom: 2rem; }
+  section > header h2 { margin-bottom: 0.5rem; }
+  section > header p { color: var(--text-muted); max-width: 60ch; }
+
+  /* ── Table of contents ───────────────────────────── */
+  .toc {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem 1.75rem;
+    box-shadow: var(--shadow);
+  }
+  .toc h3 { margin-bottom: 0.75rem; }
+  .toc ol { list-style: none; counter-reset: toc; columns: 1; }
+  @media (min-width: 640px) { .toc ol { columns: 2; column-gap: 2rem; } }
+  .toc li { counter-increment: toc; margin-bottom: 0.5rem; break-inside: avoid; }
+  .toc a {
+    color: var(--text); text-decoration: none; display: block;
+    padding: 0.25rem 0.25rem 0.25rem 2rem; position: relative;
+    border-radius: var(--radius-sm);
+  }
+  .toc a:hover { background: var(--surface-2); }
+  .toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    position: absolute; left: 0; top: 0.25rem;
+    font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600;
+    color: var(--accent); width: 1.6rem; text-align: center;
+  }
+
+  /* ── Role chip ───────────────────────────────────── */
+  .role { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 999px; letter-spacing: 0.02em; }
+  .role::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .role-op { color: var(--op-ink); background: var(--op-soft); }
+  .role-mgr { color: var(--mgr-ink); background: var(--mgr-soft); }
+  .role-mech { color: var(--mech-ink); background: var(--mech-soft); }
+  .role-client { color: var(--client-ink); background: var(--client-soft); }
+
+  /* ── Step list ───────────────────────────────────── */
+  .steps { list-style: none; counter-reset: step; margin: 1.5rem 0; }
+  .steps > li {
+    counter-increment: step;
+    position: relative; padding: 0 0 1.5rem 3.25rem;
+    border-left: 2px solid var(--border);
+    margin-left: 0.9rem;
+  }
+  .steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .steps > li::before {
+    content: counter(step);
+    position: absolute; left: -0.95rem; top: 0;
+    width: 1.85rem; height: 1.85rem; border-radius: 50%;
+    background: var(--accent); color: white;
+    display: grid; place-items: center;
+    font-size: 0.85rem; font-weight: 700; font-family: var(--font-mono);
+    box-shadow: 0 0 0 4px var(--bg);
+  }
+  .steps > li > strong { display: block; color: var(--text); margin-bottom: 0.35rem; font-weight: 600; }
+  .steps > li > p { color: var(--text-muted); }
+
+  /* ── Callouts ────────────────────────────────────── */
+  .callout {
+    display: flex; gap: 0.85rem;
+    padding: 1rem 1.15rem; margin: 1.25rem 0;
+    border-radius: var(--radius); border: 1px solid;
+    background: var(--surface);
+  }
+  .callout-icon { flex-shrink: 0; width: 1.4rem; height: 1.4rem; display: grid; place-items: center; font-weight: 800; }
+  .callout-body { flex: 1; font-size: 0.95rem; }
+  .callout-body p { color: var(--text-muted); }
+  .callout-body p + p { margin-top: 0.5rem; }
+  .callout-body strong { color: var(--text); }
+  .callout-info { border-color: color-mix(in srgb, var(--info) 35%, transparent); background: var(--info-soft); }
+  .callout-info .callout-icon { color: var(--info); }
+  .callout-warn { border-color: color-mix(in srgb, var(--warning) 40%, transparent); background: var(--warning-soft); }
+  .callout-warn .callout-icon { color: var(--warning); }
+  .callout-success { border-color: color-mix(in srgb, var(--success) 35%, transparent); background: var(--success-soft); }
+  .callout-success .callout-icon { color: var(--success); }
+  .callout-tip { border-color: color-mix(in srgb, var(--accent) 25%, transparent); background: var(--accent-soft); }
+  .callout-tip .callout-icon { color: var(--accent); }
+
+  /* ── Cards (procedure / module) ──────────────────── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem 1.75rem;
+    margin: 1.5rem 0; box-shadow: var(--shadow);
+  }
+  .card h3 { margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .card > p:first-of-type { color: var(--text-muted); margin-bottom: 1rem; }
+
+  /* ── Pipeline (ticket states) ────────────────────── */
+  .pipeline { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0; }
+  .pipe-step {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.78rem; font-weight: 600; padding: 0.3rem 0.65rem;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 999px; color: var(--text-muted); font-family: var(--font-mono);
+  }
+  .pipe-step::after { content: "→"; opacity: 0.4; margin-left: 0.4rem; }
+  .pipe-step:last-child::after { content: none; }
+  .pipe-step.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .pipe-step.active::after { color: white; opacity: 0.7; }
+
+  /* ── Tables ──────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin: 1.25rem 0; border: 1px solid var(--border); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-weight: 600; color: var(--text-muted); background: var(--surface-2); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  tr:last-child td { border-bottom: 0; }
+  td code { background: var(--surface-2); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+
+  /* ── Two-up grid ─────────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: 1fr; gap: 1rem; margin: 1.5rem 0; }
+  @media (min-width: 640px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+  .grid-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.1rem 1.25rem;
+  }
+  .grid-card h4 { margin-bottom: 0.5rem; }
+  .grid-card p { color: var(--text-muted); font-size: 0.92rem; }
+
+  /* ── Glossary ────────────────────────────────────── */
+  .glossary { display: grid; grid-template-columns: 1fr; gap: 0; margin: 1.5rem 0; }
+  @media (min-width: 640px) { .glossary { grid-template-columns: 8rem 1fr; } }
+  .glossary > dt {
+    font-family: var(--font-mono); font-weight: 600; color: var(--accent);
+    padding: 0.9rem 0; border-top: 1px solid var(--border); font-size: 0.9rem;
+  }
+  .glossary > dd {
+    padding: 0.9rem 0; border-top: 1px solid var(--border); color: var(--text-muted); margin: 0;
+  }
+  @media (min-width: 640px) {
+    .glossary > dt, .glossary > dd { border-top: 1px solid var(--border); }
+    .glossary > dt { padding-right: 1rem; }
+  }
+
+  /* ── FAQ ─────────────────────────────────────────── */
+  .faq { margin: 1.5rem 0; }
+  .faq details {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0;
+    margin-bottom: 0.5rem; overflow: hidden;
+  }
+  .faq summary {
+    padding: 1rem 1.15rem; font-weight: 600; cursor: pointer;
+    list-style: none; display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; font-size: 1.3rem; color: var(--text-muted); font-weight: 400; transition: transform 0.15s; }
+  .faq details[open] summary::after { content: "−"; }
+  .faq details > div { padding: 0 1.15rem 1.15rem; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 0.9rem; }
+  .faq details > div p + p { margin-top: 0.5rem; }
+
+  /* ── Footer ──────────────────────────────────────── */
+  footer { padding: 2.5rem 0 4rem; color: var(--text-soft); font-size: 0.85rem; }
+  footer p { margin-bottom: 0.4rem; }
+
+  /* ── Utilities ───────────────────────────────────── */
+  .meta-line { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+  .small { font-size: 0.85rem; }
+  .kbd {
+    display: inline-block; padding: 0.1rem 0.4rem; font-family: var(--font-mono);
+    font-size: 0.8em; background: var(--surface-2); border: 1px solid var(--border-strong);
+    border-bottom-width: 2px; border-radius: 3px; color: var(--text);
+  }
+  .checklist { list-style: none; margin: 0.5rem 0; }
+  .checklist li { padding: 0.3rem 0 0.3rem 1.6rem; position: relative; color: var(--text-muted); }
+  .checklist li::before { content: "✓"; position: absolute; left: 0; color: var(--success); font-weight: 800; }
+
+  /* ── Focus state (accessibility) ─────────────────── */
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ── Reduce motion ───────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+
+  /* ── Print styles ────────────────────────────────── */
+  @media print {
+    @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+    :root {
+      --bg: #ffffff; --surface: #ffffff; --surface-2: #f5f5f5;
+      --border: #d4d4d4; --border-strong: #a3a3a3;
+      --text: #0a0a0a; --text-muted: #404040; --text-soft: #525252;
+      --accent: #b91c1c; --accent-hover: #b91c1c;
+      --accent-soft: #fef2f2; --accent-ink: #7f1d1d;
+      --shadow: none; --shadow-md: none;
+    }
+    html, body { background: #fff !important; }
+    body { font-size: 10.5pt; line-height: 1.5; }
+    .topbar { display: none !important; }
+    .page { max-width: 100%; padding: 0; margin: 0; }
+    .hero { padding: 0 0 1.4rem; border-bottom: 2px solid var(--accent); }
+    .hero h1 { font-size: 22pt; }
+    .hero p.lede { font-size: 11pt; }
+    section { padding: 1.4rem 0; page-break-inside: avoid; break-inside: avoid; }
+    section > header { margin-bottom: 0.9rem; }
+    section > header h2 { font-size: 15pt; page-break-after: avoid; break-after: avoid; }
+    h3 { font-size: 12pt; page-break-after: avoid; break-after: avoid; }
+    .toc { box-shadow: none; border: 1px solid var(--border); padding: 1rem 1.2rem; page-break-after: always; break-after: page; }
+    .toc ol { columns: 2; }
+    .card, .callout, .table-wrap, .glossary, .faq details { box-shadow: none; page-break-inside: avoid; break-inside: avoid; }
+    .steps > li { page-break-inside: avoid; break-inside: avoid; }
+    .faq details[open] > div, .faq details > div { page-break-before: avoid; break-before: avoid; }
+    .table-wrap table th { background: var(--surface-2); color: var(--text); }
+    a { color: var(--text); text-decoration: none; }
+    .role, .pipe-step { border: 1px solid currentColor; }
+    /* Print full URL for anchor references in TOC so they survive offline */
+    .toc a::after { content: " (p. " target-counter(attr(href), page) ")"; font-size: 0.7rem; color: var(--text-soft); margin-left: 0.4rem; }
+    /* Cover page break */
+    .hero { page-break-after: always; break-after: page; }
+    /* Avoid orphan headings */
+    h2, h3, h4 { orphans: 3; widows: 3; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topbar" aria-label="Navegación principal">
+  <div class="topbar-inner">
+    <a class="brand" href="#top" style="text-decoration:none">
+      <span class="brand-mark">SPM</span>
+      <span>SanPedroMotoCare</span>
+    </a>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Cambiar tema">Tema</button>
+  </div>
+</nav>
+
+<main id="top" class="page">
+
+  <!-- ─── HERO ─────────────────────────────────────── -->
+  <header class="hero">
+    <span class="eyebrow">Guía de uso · v1.3</span>
+    <h1>Cómo usar SanPedroMotoCare día a día</h1>
+    <p class="lede">Manual práctico para coordinadores, mecánicos y administradores. Sin tecnicismos: aquí está <em>qué hacer</em>, <em>dónde hacer clic</em> y <em>qué esperar</em> en cada tarea común.</p>
+    <div class="hero-meta">
+      <span>📍 <code>spm-platform.vercel.app</code></span>
+      <span>🗓 Actualizado: agosto 2026</span>
+      <span>🌐 Español · English</span>
+    </div>
+  </header>
+
+  <!-- ─── TOC ──────────────────────────────────────── -->
+  <section aria-label="Contenido">
+    <div class="toc">
+      <h3>Contenido</h3>
+      <ol>
+        <li><a href="#que-es">Qué es SPM y para quién es esta guía</a></li>
+        <li><a href="#antes-de-empezar">Antes de empezar</a></li>
+        <li><a href="#iniciar-sesion">Iniciar sesión</a></li>
+        <li><a href="#panel">El panel del coordinador (CRM)</a></li>
+        <li><a href="#crear-ticket">Crear un servicio nuevo (ticket)</a></li>
+        <li><a href="#estados">Avanzar un servicio por sus estados</a></li>
+        <li><a href="#cobrar">Cobrar al cliente</a></li>
+        <li><a href="#inventario">Inventario y productos</a></li>
+        <li><a href="#facturas">Facturas y recibos PDF</a></li>
+        <li><a href="#reportes">Reportes y métricas</a></li>
+        <li><a href="#ia">Asistente IA: cómo preguntarle</a></li>
+        <li><a href="#mecanico">App del mecánico (campo)</a></li>
+        <li><a href="#cliente">Lo que ve el cliente</a></li>
+        <li><a href="#tienda">Tienda en línea</a></li>
+        <li><a href="#glosario">Glosario</a></li>
+        <li><a href="#faq">Preguntas frecuentes</a></li>
+        <li><a href="#soporte">Soporte y contacto</a></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ─── 1. QUÉ ES ───────────────────────────────── -->
+  <section id="que-es">
+    <header>
+      <h2>1 · Qué es SanPedroMotoCare</h2>
+      <p>Una plataforma web para gestionar servicios mecánicos a domicilio para motocicletas. Todo en un solo lugar: clientes, mecánicos, tickets, pagos, inventario, reportes.</p>
+    </header>
+
+    <div class="grid-2">
+      <div class="grid-card">
+        <h4>Coordinador / Operador</h4>
+        <p>El usuario principal. Atiende el teléfono, crea tickets, asigna mecánicos, cobra y supervisa el inventario. Trabaja dentro del <strong>CRM</strong>.</p>
+        <p style="margin-top:0.5rem"><span class="role role-op">Operador</span> <span class="role role-mgr">Manager</span></p>
+      </div>
+      <div class="grid-card">
+        <h4>Mecánico</h4>
+        <p>Recibe los servicios asignados, registra el avance, sube fotos y marca las refacciones usadas desde su celular en campo.</p>
+        <p style="margin-top:0.5rem"><span class="role role-mech">Mecánico</span></p>
+      </div>
+      <div class="grid-card">
+        <h4>Cliente</h4>
+        <p>Solicita el servicio, sigue el rastreo del mecánico, paga en línea, ve su historial y registra sus motos.</p>
+        <p style="margin-top:0.5rem"><span class="role role-client">Viewer</span></p>
+      </div>
+      <div class="grid-card">
+        <h4>Administrador</h4>
+        <p>Configura la plataforma: precios, zonas, roles del equipo, parámetros operativos. Sin programar.</p>
+        <p style="margin-top:0.5rem"><span class="role role-mgr">Manager</span> <span class="role role-op">Admin</span></p>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <p><strong>No necesitas instalar nada.</strong> SPM funciona en el navegador (computadora, tablet o celular) y también se puede instalar como app en Android e iOS desde la opción "Agregar a inicio".</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 2. ANTES DE EMPEZAR ──────────────────────── -->
+  <section id="antes-de-empezar">
+    <header>
+      <h2>2 · Antes de empezar</h2>
+      <p>Lo único que necesitas es esto. Si te falta algo, pide a tu administrador.</p>
+    </header>
+
+    <ul class="checklist">
+      <li>Una cuenta de Google (Gmail) o un correo y contraseña que el administrador te haya creado.</li>
+      <li>El enlace a la plataforma: <code>spm-platform.vercel.app</code>.</li>
+      <li>Un navegador moderno: Chrome, Edge, Firefox o Safari actualizados.</li>
+      <li>Para pagos: conexión a internet estable (los cobros con tarjeta pasan por Stripe).</li>
+      <li>Para la app de campo del mecánico: un celular con GPS activado.</li>
+    </ul>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <p><strong>Si te assigned un rol pero no puedes entrar,</strong> avisa a tu administrador. Es probable que tu rol en la base de datos sea <code>viewer</code> en lugar de <code>operador</code> o <code>mecánico</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 3. INICIAR SESIÓN ────────────────────────── -->
+  <section id="iniciar-sesion">
+    <header>
+      <h2>3 · Iniciar sesión</h2>
+      <p>El acceso es por Google. Si el administrador te dio correo y contraseña, esa opción también aparece.</p>
+    </header>
+
+    <ol class="steps">
+      <li>
+        <strong>Abre el enlace</strong>
+        <p>Entra a <code>spm-platform.vercel.app/login</code>.</p>
+      </li>
+      <li>
+        <strong>Toca "Continuar con Google"</strong>
+        <p>Elige la cuenta de Google con la que te dieron de alta.</p>
+      </li>
+      <li>
+        <strong>Espera un instante</strong>
+        <p>La plataforma te redirige automáticamente al panel que corresponde a tu rol: CRM (operador), app de campo (mecánico) o portal (cliente).</p>
+      </li>
+    </ol>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">✓</div>
+      <div class="callout-body">
+        <p><strong>Tip:</strong> la sesión dura 5 días. No tienes que volver a iniciar sesión cada vez, salvo que cierres sesión manualmente o borres cookies del navegador.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:2rem">Problemas comunes al iniciar sesión</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Problema</th><th>Causa probable</th><th>Qué hacer</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>La ventana de Google no abre</td>
+            <td>El navegador bloqueó el popup</td>
+            <td>Busca el ícono de popup bloqueado en la barra de direcciones y permite popups para este sitio</td>
+          </tr>
+          <tr>
+            <td>Entré pero veo "Acceso denegado"</td>
+            <td>Tu rol no es el correcto</td>
+            <td>Pide a tu administrador que verifique tu rol en Configuración → Usuarios</td>
+          </tr>
+          <tr>
+            <td>Me regresa a la pantalla de login</td>
+            <td>La sesión expiró</td>
+            <td>Vuelve a iniciar sesión con Google</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─── 4. PANEL DEL COORDINADOR (CRM) ──────────── -->
+  <section id="panel">
+    <header>
+      <h2>4 · El panel del coordinador (CRM)</h2>
+      <p>El CRM es la herramienta de trabajo diaria. Todo empieza aquí.</p>
+    </header>
+
+    <h3>Mapa general del CRM</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Sección</th><th>Para qué sirve</th><th>Quién la usa</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Dashboard</strong></td><td>Vista rápida del día: tickets activos, ingresos, mecánicos disponibles, mapa en vivo.</td><td><span class="role role-op">Operador</span></td></tr>
+          <tr><td><strong>Tickets</strong></td><td>Lista maestra de todos los servicios. Crear, asignar, cobrar, cambiar estado.</td><td><span class="role role-op">Operador</span></td></tr>
+          <tr><td><strong>Clientes</strong></td><td>Base de datos de clientes con su historial y valor acumulado.</td><td><span class="role role-op">Operador</span></td></tr>
+          <tr><td><strong>Mecánicos</strong></td><td>Equipo: disponibilidad, zonas, habilidades y desempeño.</td><td><span class="role role-op">Operador</span></td></tr>
+          <tr><td><strong>Inventario</strong></td><td>Productos, stock, proveedores y órdenes de compra.</td><td><span class="role role-op">Operador</span></td></tr>
+          <tr><td><strong>Pagos</strong></td><td>Registro de cobros (Stripe, efectivo, anticipos, parciales).</td><td><span class="role role-op">Operador</span></td></tr>
+          <tr><td><strong>Facturas</strong></td><td>Generar facturas PDF de servicios completados.</td><td><span class="role role-op">Operador</span></td></tr>
+          <tr><td><strong>Reportes</strong></td><td>Gráficas de ingresos, conversión, ranking de mecánicos.</td><td><span class="role role-mgr">Manager</span></td></tr>
+          <tr><td><strong>Contact Center</strong></td><td>Historial de llamadas y chats con clientes.</td><td><span class="role role-op">Operador</span></td></tr>
+          <tr><td><strong>Configuración</strong></td><td>Precios, horarios, zonas, roles. Cambios sin reiniciar nada.</td><td><span class="role role-mgr">Manager</span> · <span class="role role-op">Admin</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>El botón del Asistente IA</h3>
+    <p>En la esquina superior derecha del CRM hay un botón con un ícono de IA. Ábrelo cuando necesites buscar algo con preguntas en español natural. Más detalles en la sección <a href="#ia">Asistente IA</a>.</p>
+  </section>
+
+  <!-- ─── 5. CREAR TICKET ──────────────────────────── -->
+  <section id="crear-ticket">
+    <header>
+      <h2>5 · Crear un servicio nuevo (ticket)</h2>
+      <p>Cada servicio — desde una cotización por WhatsApp hasta una visita confirmada — se convierte en un <strong>ticket</strong> con un identificador único <code>SPM-XXXX</code>.</p>
+    </header>
+
+    <div class="card">
+      <h3>Opción A — Llenar el formulario de cotización <span class="role role-op">Operador</span></h3>
+      <p>Úsalo cuando un cliente te contacta por teléfono, WhatsApp o presencial y tú capturas los datos.</p>
+      <ol class="steps">
+        <li>
+          <strong>Ve a <code>/cotizar</code> o al botón "Nuevo ticket" del Dashboard</strong>
+          <p>Si lo llenas desde la URL pública, no necesitas iniciar sesión; pero desde el CRM el ticket queda asociado a tu usuario.</p>
+        </li>
+        <li>
+          <strong>Completa los datos del cliente</strong>
+          <p>Nombre, teléfono (con lada), correo, dirección completa con colonia y referencias.</p>
+        </li>
+        <li>
+          <strong>Datos de la moto</strong>
+          <p>Marca, modelo, año y tipo (trabajo, deportiva, scooter, etc.).</p>
+        </li>
+        <li>
+          <strong>Tipo de servicio y descripción</strong>
+          <p>Ejemplo: "Servicio menor + cambio de balatas traseras. Moto no enciende en frío."</p>
+        </li>
+        <li>
+          <strong>Horario preferido</strong>
+          <p>El cliente te dice cuándo puede. Esto va al ticket para que el mecánico lo vea.</p>
+        </li>
+        <li>
+          <strong>Envía el formulario</strong>
+          <p>La plataforma crea el ticket y te muestra inmediatamente el ID generado, algo como <code>SPM-0127</code>. Comparte ese ID con el cliente para que pueda rastrear.</p>
+        </li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h3>Opción B — Crearlo desde un cliente existente <span class="role role-op">Operador</span></h3>
+      <p>Si el cliente ya está en tu base de datos, no captures todo de nuevo.</p>
+      <ol class="steps">
+        <li><strong>Ve a <code>/crm/clientes</code></strong></li>
+        <li><strong>Busca al cliente</strong> por nombre o teléfono</li>
+        <li><strong>Toca "Crear ticket"</strong> en su ficha</li>
+        <li><strong>Selecciona la moto</strong> registrada (o agrega una nueva)</li>
+        <li><strong>Describe el problema</strong> y guarda</li>
+      </ol>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <p><strong>Si el cliente llenó el formulario público</strong> (desde la landing), el ticket ya existe. Lo encontrarás en <code>/crm/tickets</code> con estado <code>lead-recibido</code>. Solo revisa los datos, asigna mecánico y avanza el estado.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 6. ESTADOS ───────────────────────────────── -->
+  <section id="estados">
+    <header>
+      <h2>6 · Avanzar un servicio por sus estados</h2>
+      <p>Cada ticket recorre un pipeline de 6 estados. Avanzar al siguiente estado dispara notificaciones automáticas por WhatsApp al cliente.</p>
+    </header>
+
+    <h3>El pipeline completo</h3>
+    <div class="pipeline">
+      <span class="pipe-step">lead-recibido</span>
+      <span class="pipe-step">diagnóstico-pendiente</span>
+      <span class="pipe-step">en-camino</span>
+      <span class="pipe-step">en-servicio</span>
+      <span class="pipe-step">completado</span>
+      <span class="pipe-step active">pagado</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Estado</th><th>Qué significa</th><th>Acción que lo dispara</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>lead-recibido</code></td>
+            <td>El cliente envió la cotización pero aún no confirmamos.</td>
+            <td>Asignar mecánico y aceptar</td>
+          </tr>
+          <tr>
+            <td><code>diagnóstico-pendiente</code></td>
+            <td>El mecánico va en camino o está por llegar a hacer el diagnóstico.</td>
+            <td>Mecánico marca "voy en camino"</td>
+          </tr>
+          <tr>
+            <td><code>en-camino</code></td>
+            <td>El mecánico ya viaja al domicilio con su GPS activo.</td>
+            <td>Automático cuando el mecánico inicia el viaje</td>
+          </tr>
+          <tr>
+            <td><code>en-servicio</code></td>
+            <td>El mecánico ya está trabajando en la moto.</td>
+            <td>Mecánico toca "Iniciar servicio"</td>
+          </tr>
+          <tr>
+            <td><code>completado</code></td>
+            <td>El trabajo terminó. Falta cobrar.</td>
+            <td>Mecánico marca "Servicio terminado"</td>
+          </tr>
+          <tr>
+            <td><code>pagado</code></td>
+            <td>El cliente pagó el total. Servicio cerrado.</td>
+            <td>El sistema lo marca al confirmar el pago (Stripe o manual)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Cómo avanzar un estado desde el CRM</h3>
+    <ol class="steps">
+      <li>
+        <strong>Abre el ticket</strong>
+        <p>Desde <code>/crm/tickets</code> busca por ID, cliente o estado. Toca la fila para abrir el panel lateral.</p>
+      </li>
+      <li>
+        <strong>Revisa los datos</strong>
+        <p>Asignación de mecánico, costos estimados, diagnóstico, refacciones. Edita lo que haga falta.</p>
+      </li>
+      <li>
+        <strong>Toca "Avanzar estado"</strong>
+        <p>El sistema te pide confirmación. Al confirmar, dispara WhatsApp al cliente y registra la transición con tu usuario y la hora.</p>
+      </li>
+    </ol>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <p><strong>No saltes estados.</strong> Si avanzas a <code>completado</code> sin pasar por <code>en-servicio</code>, el cliente recibe notificaciones confusas. Si te equivocaste, repórtalo al administrador para que ajuste manualmente.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 7. COBRAR ────────────────────────────────── -->
+  <section id="cobrar">
+    <header>
+      <h2>7 · Cobrar al cliente</h2>
+      <p>SPM maneja tres formas de cobro. La elección depende del método que prefiera el cliente.</p>
+    </header>
+
+    <h3>Tipos de cobro</h3>
+    <div class="grid-2">
+      <div class="grid-card">
+        <h4>Anticipo</h4>
+        <p>Cobro por adelantado para garantizar la visita. Por defecto <strong>$200 MXN</strong> (configurable en Configuración). Si el cliente cancela, el anticipo no se reembolsa.</p>
+      </div>
+      <div class="grid-card">
+        <h4>Pago del servicio</h4>
+        <p>El cobro final cuando el servicio está <code>completado</code>. Se genera un enlace de Stripe con el monto exacto.</p>
+      </div>
+      <div class="grid-card">
+        <h4>Pago parcial</h4>
+        <p>Si el cliente paga una parte (por ejemplo, $500 de $1,200), el sistema registra el abono y deja el ticket como <code>parcial</code> hasta completar el total.</p>
+      </div>
+      <div class="grid-card">
+        <h4>Efectivo</h4>
+        <p>El cliente paga en mano. Tú registras el monto manualmente en el CRM. No pasa por Stripe.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Generar enlace de pago con Stripe (tarjeta / OXXO) <span class="role role-op">Operador</span></h3>
+      <ol class="steps">
+        <li>
+          <strong>Abre el ticket</strong>
+          <p>Ve a <code>/crm/tickets</code> y selecciona el servicio.</p>
+        </li>
+        <li>
+          <strong>Toca "Cobrar anticipo" o "Generar enlace de pago"</strong>
+          <p>Aparece un formulario con el monto editable. Si es pago final, se prellena con el costo final del servicio.</p>
+        </li>
+        <li>
+          <strong>Confirma el monto y envía</strong>
+          <p>El sistema crea una sesión de Stripe y la manda al cliente por WhatsApp automáticamente. La sesión expira en 24 horas.</p>
+        </li>
+        <li>
+          <strong>Espera la confirmación</strong>
+          <p>Cuando el cliente paga, el sistema actualiza el ticket solo (no necesitas hacer nada). El cliente recibe su recibo por WhatsApp.</p>
+        </li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h3>Registrar un pago en efectivo <span class="role role-op">Operador</span></h3>
+      <ol class="steps">
+        <li><strong>Abre el ticket</strong></li>
+        <li><strong>Toca "Registrar pago manual"</strong> en la sección de pagos</li>
+        <li><strong>Captura el monto, la fecha y una nota</strong> (opcional)</li>
+        <li><strong>Guarda</strong>. El sistema suma al total pagado. Si el monto iguala o supera el costo final, el ticket pasa a <code>pagado</code>.</li>
+      </ol>
+    </div>
+
+    <div class="callout callout-success">
+      <div class="callout-icon">✓</div>
+      <div class="callout-body">
+        <p><strong>Todos los pagos quedan registrados en <code>/crm/pagos</code></strong>. Puedes filtrar por fecha, método o estado y exportar a CSV para tu contador.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 8. INVENTARIO ────────────────────────────── -->
+  <section id="inventario">
+    <header>
+      <h2>8 · Inventario y productos</h2>
+      <p>Controla refacciones, lubricantes, accesorios y cualquier producto que vendas o uses en servicios.</p>
+    </header>
+
+    <div class="grid-2">
+      <div class="grid-card">
+        <h4>Productos</h4>
+        <p>Nombre, SKU, categoría, costo, precio de venta, stock actual y umbral mínimo de alerta.</p>
+      </div>
+      <div class="grid-card">
+        <h4>Movimientos</h4>
+        <p>Bitácora automática de cada entrada y salida: compras, ventas de tienda, uso en servicio, ajustes, devoluciones.</p>
+      </div>
+      <div class="grid-card">
+        <h4>Proveedores</h4>
+        <p>Catálogo de proveedores con datos de contacto y catálogo de lo que surten.</p>
+      </div>
+      <div class="grid-card">
+        <h4>Órdenes de compra</h4>
+        <p>Genera pedidos a proveedores. Pipeline: borrador → enviada → recibida parcial → recibida completa.</p>
+      </div>
+    </div>
+
+    <h3>Cómo agregar un producto nuevo</h3>
+    <ol class="steps">
+      <li><strong>Ve a <code>/crm/inventario</code></strong></li>
+      <li><strong>Toca "Nuevo producto"</strong></li>
+      <li><strong>Llena los datos:</strong> nombre, SKU (si tienes), categoría (motor, frenos, lubricantes, etc.), unidad (pieza, litro, kit), costo, precio de venta, stock inicial y umbral mínimo</li>
+      <li><strong>Guarda</strong>. El producto aparece de inmediato en la tienda pública <code>/tienda</code> si lo marcas como visible.</li>
+    </ol>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <p><strong>Cuando un mecánico usa una refacción en un servicio,</strong> el sistema descuenta el stock automáticamente. Si registras manualmente un uso, hazlo desde el detalle del ticket para que la bitácora quede correcta.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 9. FACTURAS ──────────────────────────────── -->
+  <section id="facturas">
+    <header>
+      <h2>9 · Facturas y recibos PDF</h2>
+      <p>Una vez que el servicio está pagado, puedes generar una factura con folio <code>INV-YYYY-XXXXX</code> en PDF.</p>
+    </header>
+
+    <ol class="steps">
+      <li><strong>Ve a <code>/crm/facturas</code></strong></li>
+      <li><strong>Busca el servicio pagado</strong> en la lista</li>
+      <li><strong>Toca "Generar factura"</strong></li>
+      <li><strong>Verifica los datos fiscales</strong> del cliente (RFC, razón social, uso de CFDI). El cliente puede haberlos capturado desde su portal.</li>
+      <li><strong>Descarga el PDF</strong> o mándalo por WhatsApp al cliente</li>
+    </ol>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <p><strong>Si el cliente requiere CFDI (factura electrónica ante el SAT),</strong> captura la URL del XML/PDF timbrado en el campo "URL CFDI" del ticket. SPM no timbra facturas automáticamente; esa parte se hace en el portal del PAC que uses.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 10. REPORTES ─────────────────────────────── -->
+  <section id="reportes">
+    <header>
+      <h2>10 · Reportes y métricas <span class="role role-mgr">Manager</span></h2>
+      <p>Visualiza el rendimiento del negocio: ingresos, conversión, ranking de mecánicos, ticket promedio.</p>
+    </header>
+
+    <ul class="checklist">
+      <li>Selecciona el período: últimos 30, 90 o 365 días.</li>
+      <li>Lee los KPIs principales: ingresos totales, servicios completados, ticket promedio, calificación general.</li>
+      <li>Compara mecánicos por servicios completados, ingresos generados y calificación.</li>
+      <li>Exporta los datos a CSV para enviarlos a tu contador o analizarlos en Excel.</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">✓</div>
+      <div class="callout-body">
+        <p><strong>Tip:</strong> revisa los reportes cada lunes para detectar tendencias. Si la tasa de conversión baja, probablemente el anticipo está muy alto o el tiempo de respuesta muy lento.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 11. ASISTENTE IA ─────────────────────────── -->
+  <section id="ia">
+    <header>
+      <h2>11 · Asistente IA: cómo preguntarle</h2>
+      <p>El botón con ícono de IA en la cabecera del CRM abre un chat que entiende preguntas en español natural sobre tickets, clientes, mecánicos, pagos e inventario.</p>
+    </header>
+
+    <h3>Ejemplos de preguntas útiles</h3>
+    <div class="grid-2">
+      <div class="grid-card">
+        <h4>Tickets</h4>
+        <p>"¿Cuántos tickets tenemos en estado en-servicio?"<br>"¿Cuál es el ticket más antiguo sin pagar?"<br>"Muéstrame los servicios de hoy del mecánico Juan."</p>
+      </div>
+      <div class="grid-card">
+        <h4>Clientes</h4>
+        <p>"¿Quiénes son los 10 clientes con más servicios este mes?"<br>"¿Cuánto ha pagado el cliente Roberto López en total?"</p>
+      </div>
+      <div class="grid-card">
+        <h4>Ingresos y pagos</h4>
+        <p>"¿Cuánto ingresamos la semana pasada?"<br>"¿Cuántos pagos pendientes tenemos por más de $500?"</p>
+      </div>
+      <div class="grid-card">
+        <h4>Inventario</h4>
+        <p>"¿Qué productos están por debajo del stock mínimo?"<br>"¿Cuánto aceite 20W50 vendimos este mes?"</p>
+      </div>
+    </div>
+
+    <div class="callout callout-success">
+      <div class="callout-icon">✓</div>
+      <div class="callout-body">
+        <p><strong>También puedes hablarle.</strong> Toca el ícono del micrófono dentro del chat y dicta tu pregunta. Funciona en Chrome y Edge.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <p><strong>El asistente no puede modificar datos,</strong> solo consultarlos. Para crear tickets, cobrar o cambiar estados, usa los módulos del CRM directamente.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 12. MECÁNICO ─────────────────────────────── -->
+  <section id="mecanico">
+    <header>
+      <h2>12 · App del mecánico (campo) <span class="role role-mech">Mecánico</span></h2>
+      <p>El mecánico trabaja desde el celular. Esta sección le explica qué hacer en cada momento del servicio.</p>
+    </header>
+
+    <h3>El día a día en 6 pasos</h3>
+    <ol class="steps">
+      <li>
+        <strong>Inicia sesión en <code>spm-platform.vercel.app</code></strong>
+        <p>Entra con tu Google. La plataforma detecta tu rol y te lleva a la app de campo.</p>
+      </li>
+      <li>
+        <strong>Revisa tus servicios asignados del día</strong>
+        <p>Aparecen ordenados por horario. Toca el que vas a atender para ver detalles, dirección y datos de la moto.</p>
+      </li>
+      <li>
+        <strong>Toca "Voy en camino" cuando salgas</strong>
+        <p>Tu GPS empieza a compartirse. El cliente ve tu ubicación en tiempo real. El ticket pasa a <code>en-camino</code>.</p>
+      </li>
+      <li>
+        <strong>Al llegar, toca "Iniciar servicio"</strong>
+        <p>El ticket pasa a <code>en-servicio</code>. Aquí registras el diagnóstico, subes fotos del antes y vas marcando las refacciones que usas.</p>
+      </li>
+      <li>
+        <strong>Al terminar, toca "Servicio completado"</strong>
+        <p>Captura el costo final si aplica, marca el método de pago (efectivo o enlace) y el ticket pasa a <code>completado</code>.</p>
+      </li>
+      <li>
+        <strong>Pide al cliente que califique</strong>
+        <p>Al finalizar, el cliente recibe un WhatsApp con link para calificarte. La calificación alimenta los reportes de desempeño.</p>
+      </li>
+    </ol>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">
+        <p><strong>¿Se te acabó la batería o el internet?</strong> Los datos del ticket se quedan en cache. Cuando recuperes conexión, todo se sincroniza automáticamente.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 13. CLIENTE ──────────────────────────────── -->
+  <section id="cliente">
+    <header>
+      <h2>13 · Lo que ve el cliente <span class="role role-client">Viewer</span></h2>
+      <p>Útil para que sepas qué puede hacer un cliente por su cuenta y en qué lo debes ayudar tú.</p>
+    </header>
+
+    <h3>El portal del cliente</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Sección</th><th>Qué hace ahí</th></tr></thead>
+        <tbody>
+          <tr><td>Inicio</td><td>Ve sus últimos 5 servicios, su estado, y accesos rápidos.</td></tr>
+          <tr><td>Mis servicios</td><td>Historial completo con filtros y barra de progreso del servicio actual.</td></tr>
+          <tr><td>Pagar</td><td>Ve los pagos pendientes, paga con tarjeta/OXXO, descarga recibos.</td></tr>
+          <tr><td>Mis motos</td><td>Registra sus vehículos con marca, modelo, año, placa y fotos.</td></tr>
+          <tr><td>Perfil</td><td>Edita sus datos personales y fiscales para facturación.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Rastreo público (sin login)</h3>
+    <p>Si el cliente te pregunta "¿dónde va el mecánico?", dile que entre a <code>spm-platform.vercel.app/tracking/SPM-XXXX</code> (con el ID de su ticket) y vea el mapa en vivo. No necesita crear cuenta.</p>
+  </section>
+
+  <!-- ─── 14. TIENDA ───────────────────────────────── -->
+  <section id="tienda">
+    <header>
+      <h2>14 · Tienda en línea</h2>
+      <p>Los productos marcados como visibles en inventario aparecen automáticamente en <code>/tienda</code>. Cualquier persona puede comprar sin iniciar sesión.</p>
+    </header>
+
+    <h3>Cómo se procesa un pedido</h3>
+    <ol class="steps">
+      <li><strong>El cliente agrega productos al carrito</strong></li>
+      <li><strong>Elige método de entrega:</strong> envío a domicilio o recolección en taller</li>
+      <li><strong>Paga con tarjeta u OXXO</strong> a través de Stripe</li>
+      <li><strong>El sistema genera el pedido</strong> con folio <code>ORD-YYYY-XXXXX</code> y notifica al operador</li>
+      <li><strong>El operador prepara y marca como enviado o entregado</strong> desde el módulo de pedidos del CRM</li>
+    </ol>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">✓</div>
+      <div class="callout-body">
+        <p><strong>Tip:</strong> revisa el módulo de pedidos del CRM cada mañana. Los pedidos pagados del día anterior suelen recogerse entre 10:00 y 12:00.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 15. GLOSARIO ─────────────────────────────── -->
+  <section id="glosario">
+    <header>
+      <h2>15 · Glosario</h2>
+      <p>Términos que vas a escuchar todo el tiempo.</p>
+    </header>
+
+    <dl class="glossary">
+      <dt>Ticket</dt>
+      <dd>Un servicio o solicitud de servicio. Identificado como <code>SPM-XXXX</code> (ejemplo: <code>SPM-0127</code>).</dd>
+
+      <dt>Lead</dt>
+      <dd>Una solicitud de cotización que aún no se ha convertido en servicio confirmado. Estado inicial <code>lead-recibido</code>.</dd>
+
+      <dt>Anticipo</dt>
+      <dd>Pago por adelantado que garantiza la visita del mecánico. Por defecto <code>$200 MXN</code>. Si el cliente cancela, no se reembolsa.</dd>
+
+      <dt>Pago parcial</dt>
+      <dd>Cuando el cliente paga una parte del total. El ticket queda como <code>parcial</code> hasta cubrir el costo final.</dd>
+
+      <dt>Pipeline</dt>
+      <dd>La secuencia de estados por los que pasa un ticket, de <code>lead-recibido</code> a <code>pagado</code>.</dd>
+
+      <dt>CRM</dt>
+      <dd>El panel de control donde trabajan coordinadores y administradores. Todo lo operativo vive ahí.</dd>
+
+      <dt>RTDB</dt>
+      <dd>Firebase Realtime Database. La base de datos de baja latencia que guarda las coordenadas GPS de los mecánicos.</dd>
+
+      <dt>FCM</dt>
+      <dd>Firebase Cloud Messaging. El servicio que manda notificaciones push a la app cuando hay cambios.</dd>
+
+      <dt>CFDI</dt>
+      <dd>Comprobante Fiscal Digital por Internet. La factura electrónica que el SAT exige en México. Se genera fuera de SPM en un PAC.</dd>
+
+      <dt>OXXO</dt>
+      <dd>Método de pago en efectivo disponible a través de Stripe. El cliente recibe un código de barras y paga en cualquier OXXO. Vence a los 3 días.</dd>
+
+      <dt>Rol</dt>
+      <dd>Nivel de permiso del usuario: <code>viewer</code>, <code>mecánico</code>, <code>operador</code>, <code>manager</code>, <code>admin</code>.</dd>
+
+      <dt>PWA</dt>
+      <dd>Progressive Web App. La versión "instalable" de la web. En tu celular sale la opción "Agregar a pantalla de inicio".</dd>
+    </dl>
+  </section>
+
+  <!-- ─── 16. FAQ ──────────────────────────────────── -->
+  <section id="faq">
+    <header>
+      <h2>16 · Preguntas frecuentes</h2>
+    </header>
+
+    <div class="faq">
+      <details>
+        <summary>¿Qué pasa si el cliente no paga el anticipo?</summary>
+        <div>
+          <p>El ticket se queda en <code>lead-recibido</code>. No asignes mecánico hasta que se confirme el pago. Si el cliente cambia de opinión, marca el ticket como cancelado desde el panel lateral.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>El cliente dice que ya pagó pero el sistema no lo marca</summary>
+        <div>
+          <p>Espera 2-3 minutos: Stripe necesita confirmar. Si después de 5 minutos sigue igual, revisa que el enlace que se le envió no haya expirado (duran 24 horas). Si expiró, genera uno nuevo.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>¿Cómo cancelo un ticket?</summary>
+        <div>
+          <p>Abre el ticket, ve al final del panel lateral y toca "Cancelar ticket". Confirma. El sistema registra la cancelación con tu usuario y la hora. El anticipo no se reembolsa automáticamente; si hay disputa, consúltalo con tu administrador.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>¿Puedo cambiar el idioma a inglés?</summary>
+        <div>
+          <p>Sí. En la barra superior hay un selector <strong>ES / EN</strong>. La preferencia se guarda en tu navegador.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>¿Cómo cambio entre modo claro y oscuro?</summary>
+        <div>
+          <p>Hay un botón con ícono de sol/luna en la barra superior. SPM inicia en modo oscuro por defecto.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>El mecánico no aparece en el mapa</summary>
+        <div>
+          <p>Verifica que tenga el GPS activado en su celular y que haya tocado "Voy en camino" en la app. La posición se actualiza cada pocos segundos; si lleva varios minutos sin aparecer, reinicia la app o avisa al administrador.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>¿Puedo usar SPM en mi celular?</summary>
+        <div>
+          <p>Sí. El sitio es responsivo. En Android e iOS puedes instalarlo como app tocando "Agregar a pantalla de inicio" desde el navegador.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>¿Qué pasa si borro accidentalmente un ticket o un producto?</summary>
+        <div>
+          <p>El sistema no permite borrar definitivamente. Los registros se marcan como inactivos y un administrador puede restaurarlos desde la base de datos si es necesario.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>¿Cómo doy de alta a un nuevo mecánico?</summary>
+        <div>
+          <p>Pide a un manager o admin que lo agregue en <code>/crm/configuracion</code> → Usuarios, con el rol <code>mecánico</code>. El nuevo usuario debe tener una cuenta de Google lista.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary>¿Se puede cobrar en dólares u otra moneda?</summary>
+        <div>
+          <p>No. SPM está configurado para pesos mexicanos (MXN). Si en el futuro abres otra zona, se puede cambiar.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ─── 17. SOPORTE ──────────────────────────────── -->
+  <section id="soporte">
+    <header>
+      <h2>17 · Soporte y contacto</h2>
+      <p>Si encuentras un problema técnico o necesitas un cambio que no puedes hacer tú, contacta al equipo.</p>
+    </header>
+
+    <div class="grid-2">
+      <div class="grid-card">
+        <h4>Para usuarios</h4>
+        <p>Habla con tu coordinador o administrador. Ellos tienen acceso a la configuración y pueden escalar el problema.</p>
+      </div>
+      <div class="grid-card">
+        <h4>Para administradores</h4>
+        <p>Revisa primero la consola del navegador (<span class="kbd">F12</span> → pestaña "Consola") y captura el error. Si el sistema no carga, intenta desde otro navegador o red.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">
+        <p><strong>Ante una caída del sistema o problema con pagos,</strong> no intentes operaciones repetidamente. Detente y avisa. Cada clic puede generar cobros duplicados.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>SanPedroMotoCare</strong> · Guía de uso v1.3 · agosto 2026</p>
+    <p>Hecho para el equipo operativo. Si algo no está claro o falta, levanta el tema y se actualiza en la siguiente versión.</p>
+  </footer>
+</main>
+
+<script>
+  // Theme toggle — three states: system / light / dark
+  (function () {
+    var btn = document.getElementById('theme-toggle');
+    var root = document.documentElement;
+    var KEY = 'spm-guide-theme';
+
+    function applyTheme(stored) {
+      if (stored === 'light' || stored === 'dark') {
+        root.setAttribute('data-theme', stored);
+        btn.textContent = stored === 'dark' ? '☀' : '☾';
+      } else {
+        root.removeAttribute('data-theme');
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        btn.textContent = dark ? '☀' : '☾';
+      }
+    }
+
+    var initial = localStorage.getItem(KEY);
+    applyTheme(initial);
+
+    btn.addEventListener('click', function () {
+      var current = root.getAttribute('data-theme');
+      var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var resolvedDark = current === 'dark' || (!current && sysDark);
+      var next = resolvedDark ? 'light' : 'dark';
+      localStorage.setItem(KEY, next);
+      applyTheme(next);
+    });
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+      if (!root.getAttribute('data-theme')) applyTheme(null);
+    });
+  })();
+</script>
+
+</body>
+</html>

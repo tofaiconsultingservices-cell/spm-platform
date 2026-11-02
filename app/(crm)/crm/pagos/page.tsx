@@ -604,7 +604,7 @@ export default function PagosPage() {
 
             <div className={isDark ? "bg-slate-900" : "bg-white"}>
               {filtered.map((p, i) => {
-                const MIcon = METHOD_ICONS[p.method];
+                const MIcon = METHOD_ICONS[p.method as PaymentMethod] ?? CreditCard;
                 return (
                   <div key={p.id}
                     className={`grid grid-cols-[1fr_1.2fr_100px_100px_100px_80px_60px] gap-3 items-center px-5 py-3.5 border-b transition-colors hover:bg-white/5 ${

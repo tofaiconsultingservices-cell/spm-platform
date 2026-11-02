@@ -46,11 +46,13 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(self), geolocation=(), payment=()",
   },
-  // NOTE: Cross-Origin-Opener-Policy is intentionally NOT set (default: unsafe-none).
-  // Setting same-origin-allow-popups conflicts with Google's own COOP: same-origin header,
-  // causing Chrome to isolate the popup's browsing context — window.opener becomes null,
-  // Firebase Auth cannot send the auth result back to the opener, and the page goes blank.
-  // The auth flow uses signInWithRedirect (no popup) so COOP is not needed.
+  // NOTE: Cross-Origin-Opener-Policy is NOT set here (default: unsafe-none).
+  // Setting same-origin-allow-popups on ALL pages conflicts with Google's COOP: same-origin
+  // header on the auth popup — Chrome would isolate the browsing context, making
+  // window.opener null and breaking the Firebase signInWithPopup flow.
+  // Pages that never open a Google auth popup (e.g. /crm/pagos, /portal/pagar) DO get
+  // same-origin-allow-popups via the per-route header override below, which silences
+  // the window.closed COOP warnings produced by Stripe's hosted checkout.
   {
     key: "Content-Security-Policy",
     value: cspDirectives,
@@ -84,15 +86,33 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   async rewrites() {
-    if (!firebaseAuthDomain) return [];
     // Proxy Firebase Auth handler + iframe to the authoritative Firebase domain.
     // Required when authDomain is a custom domain so that signInWithPopup /
     // signInWithRedirect can load /__/auth/handler and /__/auth/iframe.
+    const authRewrite = firebaseAuthDomain
+      ? [
+          {
+            source: "/__/auth/:path*",
+            destination: `https://${firebaseAuthDomain}/__/auth/:path*`,
+          },
+        ]
+      : [];
+
     return [
+      // Guia estática servida en guia.sanpedromotocare.com
+      // Cuando el host es el subdominio de la guía, todas las rutas se sirven
+      // desde /guia.html (incluye CSS+JS inline, sin dependencias).
       {
-        source: "/__/auth/:path*",
-        destination: `https://${firebaseAuthDomain}/__/auth/:path*`,
+        has: [
+          {
+            type: "host",
+            value: "guia.sanpedromotocare.com",
+          },
+        ],
+        source: "/:path*",
+        destination: "/guia.html",
       },
+      ...authRewrite,
     ];
   },
   async headers() {
@@ -101,6 +121,18 @@ const nextConfig: NextConfig = {
         // Apply security headers to all routes
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        // Payment pages never open a Google auth popup, so we can safely enable
+        // same-origin-allow-popups. This lets our code (and Stripe.js) inspect
+        // window.closed on popups we open, silencing the COOP console warnings.
+        source: "/(crm/pagos|portal/pagar)(.*)",
+        headers: [
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
+          },
+        ],
       },
     ];
   },

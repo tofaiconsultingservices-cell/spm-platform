@@ -1,0 +1,851 @@
+ Ayudame a planear, diseñar, ejecutar, implementar, documentar y desplegar una estrategia para tener una base de
+  datos/inventario de productos que a su ves pueda servir como fuente de verdad para los diferentes modulos de la
+  plataforma SMP que sirva por ejemplo a una nueva tienda en linea de articulos de motocicletas y al mismo tiempo
+  controlar el inventario basado en los documentos incluidos en la carpeta
+  "C:\Users\diosd\sanpedromotocare\spm-platform\marketplaceSPM", dime cuales son mis opciones y elige la mas eficiente,
+   robusta y viable estrategia de control, inventario, maarketplace, etc.
+
+● Voy a explorar el proyecto y los documentos en marketplaceSPM antes de darte mis recomendaciones.
+
+● Explore(Explorar estructura del proyecto y documentos de marketplaceSPM)
+  ⎿  Done (25 tool uses · 94.1k tokens · 57s)
+  (ctrl+o to expand)
+
+● Ahora déjame ver las imágenes y algunas páginas del catálogo PDF para entender la estructura de datos de productos.
+
+  Read 4 files (ctrl+o to expand)
+
+● Ahora tengo todo el contexto que necesito. Las fotos son notas de venta reales de MotoCruz (Nota de Venta #239,
+  $28,101.88 MXN) con datos estructurados: descripción, compatible models, precio unitario, cantidad, unidades. Aquí
+  está el análisis completo.
+
+  ---
+  Análisis: Estrategia de Inventario/Marketplace para SPM
+
+  Lo que encontré
+
+  Estado actual: La plataforma es 100% orientada a tickets de servicio. El único rastro de productos son PartItem[]
+  dentro de cada ticket (nombre, qty, costo), sin catálogo maestro, sin stock, sin gestión de proveedores.
+
+  Datos reales disponibles (MotoCruz, Proveedor 1004):
+  - ~80+ productos en las 3 notas de venta
+  - Estructura clara: DESCRIPCIÓN | CANT | UNI (PZA) | P.UNIT | IMPORTE
+  - Compatibilidad por modelo de moto incluida en el nombre (ej. BOBINA (DIMORA) FT150/FT125/125Z/DM200)
+  - PDF de 53MB con catálogo completo del proveedor
+  - Total compra: $28,101.88 MXN
+
+  ---
+  Las 3 Opciones
+
+  Opción A — Firestore Nativo (Todo en Firebase)
+
+  Agregar colecciones products, vendors, purchase_orders, inventory_movements a Firestore. El catálogo, stock, tienda y
+  CRM operan sobre la misma base.
+
+  ┌──────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │              │                                                                                                  │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Pros         │ Zero nuevas integraciones, auth unificado, reglas de seguridad existentes, real-time sync        │
+  │              │ gratuito, el equipo ya conoce Firestore                                                          │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Contras      │ Firestore cobra por lectura (costoso con catálogos grandes + muchos usuarios), queries de        │
+  │              │ búsqueda/filtrado limitadas sin índices compuestos                                               │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Costo        │ ~$0 hasta escalar significativamente                                                             │
+  │ adicional    │                                                                                                  │
+  └──────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Opción B — Supabase (PostgreSQL) + Firestore Híbrido
+
+  Supabase para catálogo/inventario (queries SQL complejas), Firestore para CRM operativo.
+
+  ┌───────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │               │                                                                                                 │
+  ├───────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Pros          │ SQL real para filtros complejos (por modelo de moto, categoria, precio), full-text search       │
+  │               │ nativo, joins eficientes                                                                        │
+  ├───────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Contras       │ Dos fuentes de verdad, sincronización entre sistemas, mayor complejidad de auth, curva de       │
+  │               │ aprendizaje                                                                                     │
+  ├───────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Costo         │ ~$25 USD/mes (Supabase Pro)                                                                     │
+  │ adicional     │                                                                                                 │
+  └───────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Opción C — Firestore + Algolia/Typesense para Búsqueda
+
+  Firestore como source of truth + motor de búsqueda externo para la tienda.
+
+  ┌────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │                │                                                                                                │
+  ├────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Pros           │ Búsqueda de catálogo extremadamente rápida y relevante                                         │
+  ├────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Contras        │ Over-engineering para el tamaño actual del negocio, sincronización Firestore→Algolia, costo    │
+  │                │ adicional                                                                                      │
+  ├────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Costo          │ ~$50 USD/mes mínimo                                                                            │
+  │ adicional      │                                                                                                │
+  └────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  Mi Recomendación: Opción A — Firestore Nativo
+
+  Para una PyME local con un proveedor principal, inventario de ~500-2000 SKUs y módulos propios, Firestore nativo es la
+   estrategia más eficiente y viable. Elimina complejidad innecesaria, aprovecha toda la infraestructura existente
+  (auth, reglas, real-time, Storage para imágenes), y escala suficientemente bien para el caso de uso.
+
+  ---
+  Arquitectura Propuesta: products como Source of Truth
+
+  Firestore Collections:
+  │
+  ├── /products/{productId}          ← CATÁLOGO MAESTRO
+  │     sku, name, category,
+  │     compatibleModels[], supplier,
+  │     costPrice, salePrice, unit,
+  │     stock, minStock, images[],
+  │     isActive, tags[]
+  │
+  ├── /vendors/{vendorId}            ← PROVEEDORES
+  │     name ("MotoCruz"), rfc,
+  │     contact, phone, email
+  │
+  ├── /purchase_orders/{orderId}     ← ÓRDENES DE COMPRA
+  │     vendorId, date, items[],
+  │     total, status
+  │     (→ actualiza stock automáticamente)
+  │
+  ├── /inventory_movements/{id}      ← BITÁCORA DE MOVIMIENTOS
+  │     productId, type, qty,
+  │     reference (ticketId/orderId),
+  │     date, userId
+  │
+  └── /service_tickets/{id}          ← YA EXISTE
+        parts[] → ahora apuntan a
+        productId del catálogo maestro
+
+  Los 4 módulos que esto habilita:
+
+  ┌──────────────────┬────────────────────────────────────────────────────────────────────────┬───────────────────┐
+  │      Módulo      │                              Descripción                               │   Quién lo usa    │
+  ├──────────────────┼────────────────────────────────────────────────────────────────────────┼───────────────────┤
+  │ Inventario Admin │ CRUD productos, recibir compras, ajustar stock                         │ Admin/Manager     │
+  ├──────────────────┼────────────────────────────────────────────────────────────────────────┼───────────────────┤
+  │ Marketplace      │ Tienda online pública, carrito, checkout Stripe                        │ Clientes externos │
+  ├──────────────────┼────────────────────────────────────────────────────────────────────────┼───────────────────┤
+  │ CRM Integration  │ Al crear ticket, seleccionar partes del catálogo (no escribir a mano)  │ Operador/Mecánico │
+  ├──────────────────┼────────────────────────────────────────────────────────────────────────┼───────────────────┤
+  │ Compras          │ Registrar órdenes de compra MotoCruz, auto-actualizar stock al recibir │ Admin             │
+  └──────────────────┴────────────────────────────────────────────────────────────────────────┴───────────────────┘
+
+  ---
+  Plan de Implementación (4 fases)
+
+  Fase 1 — Fundación (semana 1-2)
+    ✓ Tipos TypeScript para Product, Vendor, PurchaseOrder, InventoryMovement
+    ✓ Reglas de Firestore para nuevas colecciones
+    ✓ Seed script para importar MotoCruz del PDF/fotos
+    ✓ API routes: /api/products (CRUD)
+
+  Fase 2 — Inventario Admin (semana 2-3)
+    ✓ Módulo en CRM: /crm/inventario
+    ✓ Tabla de productos con filtros
+    ✓ Formulario de recepción de compras
+    ✓ Dashboard de stock bajo / reorden
+
+  Fase 3 — Integración CRM (semana 3-4)
+    ✓ Selector de partes del catálogo en tickets de servicio
+    ✓ Descuento automático de stock al cerrar ticket
+    ✓ Historial de movimientos por producto
+
+  Fase 4 — Marketplace Público (semana 4-6)
+    ✓ /tienda — vitrina pública con búsqueda
+    ✓ Carrito y checkout con Stripe (ya integrado)
+    ✓ Filtro por modelo de moto compatible
+    ✓ Portal de cliente con historial de pedidos
+
+  ---
+  ¿Quieres que empiece con la Fase 1 (tipos TypeScript + reglas Firestore + seed script para importar el catálogo de
+  MotoCruz)? Esa sería la base sobre la que todo lo demás se construye.
+
+✻ Cogitated for 2m 35s
+
+※ recap: Planning a product inventory system for SPM platform using Firestore as single source of truth, feeding a new
+  online store and CRM integration. Next: start Phase 1 with TypeScript types, Firestore rules, and MotoCruz catalog
+  import script. (disable recaps in /config)
+
+❯ adelante con fase 1 completa
+
+● Voy a leer los archivos clave antes de escribir código para seguir los patrones existentes.
+
+  Searched for 1 pattern, read 7 files (ctrl+o to expand)
+
+● Let me also check the auth and payment API patterns to follow the same auth pattern.
+
+  Read 3 files (ctrl+o to expand)
+
+❯ responde en español
+
+● Tengo todo lo que necesito. Voy a implementar Phase 1 completa en paralelo — tipos, reglas Firestore, índices,
+  helpers, API routes y seed script.
+
+● Tareas creadas. Empezando con tipos, reglas e índices en paralelo.
+
+● Update(types\index.ts)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Edit file
+ types\index.ts
+╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+ 388    parcial: "Pago parcial",
+ 389    final: "Pago final",
+ 390  };
+ 391 +
+ 392 +// ============================================================
+ 393 +// Inventory — Product Catalog
+ 394 +// ============================================================
+ 395 +
+ 396 +export type ProductCategory =
+ 397 +  | "motor"
+ 398 +  | "transmision"
+ 399 +  | "suspension"
+ 400 +  | "frenos"
+ 401 +  | "electrico"
+ 402 +  | "neumaticos"
+ 403 +  | "lubricantes"
+ 404 +  | "carroceria"
+ 405 +  | "encendido"
+ 406 +  | "herramientas"
+ 407 +  | "accesorios"
+ 408 +  | "otro";
+ 409 +
+ 410 +export type ProductUnit = "PZA" | "LT" | "KIT" | "PAR" | "JGO" | "MT";
+ 411 +
+ 412 +export interface Product {
+ 413 +  id: string;
+ 414 +  sku: string;              // PRD-XXXXX
+ 415 +  name: string;             // Full description (from supplier invoice)
+ 416 +  shortName?: string;       // Short display name for UI
+ 417 +  category: ProductCategory;
+ 418 +  unit: ProductUnit;
+ 419 +  compatibleModels: string[]; // e.g. ["FT150", "DM200", "125Z"]
+ 420 +  vendorId?: string;
+ 421 +  vendorSku?: string;
+ 422 +  costPrice: number;        // Wholesale price (proveedor)
+ 423 +  salePrice: number;        // Retail price (cliente)
+ 424 +  stock: number;            // Current units in stock
+ 425 +  minStock: number;         // Reorder threshold
+ 426 +  imageUrls?: string[];
+ 427 +  isActive: boolean;
+ 428 +  isFeatured?: boolean;
+ 429 +  tags?: string[];
+ 430 +  createdAt?: Timestamp;
+ 431 +  updatedAt?: Timestamp;
+ 432 +}
+ 433 +
+ 434 +// ============================================================
+ 435 +// Inventory — Vendor (Proveedor)
+ 436 +// ============================================================
+ 437 +
+ 438 +export interface Vendor {
+ 439 +  id: string;
+ 440 +  vendorId: string;  // PROV-XXXX
+ 441 +  name: string;
+ 442 +  rfc?: string;
+ 443 +  contactName?: string;
+ 444 +  phone?: string;
+ 445 +  email?: string;
+ 446 +  address?: Address;
+ 447 +  isActive: boolean;
+ 448 +  notes?: string;
+ 449 +  createdAt?: Timestamp;
+ 450 +  updatedAt?: Timestamp;
+ 451 +}
+ 452 +
+ 453 +// ============================================================
+ 454 +// Inventory — Purchase Order (Orden de Compra)
+ 455 +// ============================================================
+ 456 +
+ 457 +export type PurchaseOrderStatus =
+ 458 +  | "borrador"
+ 459 +  | "enviada"
+ 460 +  | "recibida-parcial"
+ 461 +  | "recibida-completa"
+ 462 +  | "cancelada";
+ 463 +
+ 464 +export interface PurchaseOrderItem {
+ 465 +  productId?: string;   // Optional: links to catalog product
+ 466 +  productName: string;  // Snapshot
+ 467 +  sku?: string;
+ 468 +  unit: ProductUnit;
+ 469 +  qty: number;
+ 470 +  unitCost: number;
+ 471 +  total: number;
+ 472 +  receivedQty?: number; // For partial receipts
+ 473 +}
+ 474 +
+ 475 +export interface PurchaseOrder {
+ 476 +  id: string;
+ 477 +  orderId: string;       // OC-YYYY-XXXXX
+ 478 +  vendorId: string;
+ 479 +  vendorName: string;
+ 480 +  items: PurchaseOrderItem[];
+ 481 +  subtotal: number;
+ 482 +  total: number;
+ 483 +  status: PurchaseOrderStatus;
+ 484 +  notes?: string;
+ 485 +  invoiceRef?: string;   // External nota de venta / invoice number
+ 486 +  receivedAt?: Timestamp;
+ 487 +  createdBy: string;
+ 488 +  createdAt?: Timestamp;
+ 489 +  updatedAt?: Timestamp;
+ 490 +}
+ 491 +
+ 492 +// ============================================================
+ 493 +// Inventory — Movement Log (Bitácora)
+ 494 +// ============================================================
+ 495 +
+ 496 +export type InventoryMovementType =
+ 497 +  | "compra"          // Received from supplier
+ 498 +  | "venta-tienda"    // Sold via marketplace
+ 499 +  | "uso-servicio"    // Used in a service ticket
+ 500 +  | "ajuste-entrada"  // Manual positive adjustment
+ 501 +  | "ajuste-salida"   // Manual negative adjustment
+ 502 +  | "devolucion";     // Customer return
+ 503 +
+ 504 +export interface InventoryMovement {
+ 505 +  id: string;
+ 506 +  productId: string;
+ 507 +  productName: string;    // Snapshot at time of movement
+ 508 +  type: InventoryMovementType;
+ 509 +  qty: number;            // Positive = in, Negative = out
+ 510 +  stockBefore: number;
+ 511 +  stockAfter: number;
+ 512 +  unitCost?: number;
+ 513 +  reference?: string;     // ticketId, orderId, orderId, etc.
+ 514 +  note?: string;
+ 515 +  createdBy: string;
+ 516 +  createdAt?: Timestamp;
+ 517 +}
+ 518 +
+ 519 +// ============================================================
+ 520 +// Inventory — Helpers / Labels
+ 521 +// ============================================================
+ 522 +
+ 523 +export const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
+ 524 +  motor: "Motor",
+ 525 +  transmision: "Transmisión",
+ 526 +  suspension: "Suspensión",
+ 527 +  frenos: "Frenos",
+ 528 +  electrico: "Sistema Eléctrico",
+ 529 +  neumaticos: "Neumáticos",
+ 530 +  lubricantes: "Lubricantes",
+ 531 +  carroceria: "Carrocería",
+ 532 +  encendido: "Encendido",
+ 533 +  herramientas: "Herramientas",
+ 534 +  accesorios: "Accesorios",
+ 535 +  otro: "Otro",
+ 536 +};
+ 537 +
+ 538 +export const PRODUCT_UNIT_LABELS: Record<ProductUnit, string> = {
+ 539 +  PZA: "Pieza",
+ 540 +  LT: "Litro",
+● Voy a leer los archivos clave antes de escribir código para seguir los patrones existentes.
+
+  Searched for 1 pattern, read 7 files (ctrl+o to expand)
+
+● Let me also check the auth and payment API patterns to follow the same auth pattern.
+
+  Read 3 files (ctrl+o to expand)
+
+❯ responde en español
+
+● Tengo todo lo que necesito. Voy a implementar Phase 1 completa en paralelo — tipos, reglas Firestore, índices,
+  helpers, API routes y seed script.
+
+● Tareas creadas. Empezando con tipos, reglas e índices en paralelo.
+
+● Update(types\index.ts)
+  ⎿  Added 172 lines
+      388    parcial: "Pago parcial",
+      389    final: "Pago final",
+      390  };
+      391 +
+      392 +// ============================================================
+      393 +// Inventory — Product Catalog
+      394 +// ============================================================
+      395 +
+      396 +export type ProductCategory =
+      397 +  | "motor"
+      398 +  | "transmision"
+      399 +  | "suspension"
+      400 +  | "frenos"
+      401 +  | "electrico"
+      402 +  | "neumaticos"
+      403 +  | "lubricantes"
+      404 +  | "carroceria"
+      405 +  | "encendido"
+      406 +  | "herramientas"
+      407 +  | "accesorios"
+      408 +  | "otro";
+      409 +
+      410 +export type ProductUnit = "PZA" | "LT" | "KIT" | "PAR" | "JGO" | "MT";
+      411 +
+      412 +export interface Product {
+      413 +  id: string;
+      414 +  sku: string;              // PRD-XXXXX
+      415 +  name: string;             // Full description (from supplier invoice)
+      416 +  shortName?: string;       // Short display name for UI
+      417 +  category: ProductCategory;
+      418 +  unit: ProductUnit;
+      419 +  compatibleModels: string[]; // e.g. ["FT150", "DM200", "125Z"]
+      420 +  vendorId?: string;
+      421 +  vendorSku?: string;
+      422 +  costPrice: number;        // Wholesale price (proveedor)
+      423 +  salePrice: number;        // Retail price (cliente)
+      424 +  stock: number;            // Current units in stock
+      425 +  minStock: number;         // Reorder threshold
+      426 +  imageUrls?: string[];
+      427 +  isActive: boolean;
+      428 +  isFeatured?: boolean;
+      429 +  tags?: string[];
+      430 +  createdAt?: Timestamp;
+      431 +  updatedAt?: Timestamp;
+      432 +}
+      433 +
+      434 +// ============================================================
+      435 +// Inventory — Vendor (Proveedor)
+      436 +// ============================================================
+      437 +
+      438 +export interface Vendor {
+      439 +  id: string;
+      440 +  vendorId: string;  // PROV-XXXX
+      441 +  name: string;
+      442 +  rfc?: string;
+      443 +  contactName?: string;
+      444 +  phone?: string;
+      445 +  email?: string;
+      446 +  address?: Address;
+      447 +  isActive: boolean;
+      448 +  notes?: string;
+      449 +  createdAt?: Timestamp;
+      450 +  updatedAt?: Timestamp;
+      451 +}
+      452 +
+      453 +// ============================================================
+      454 +// Inventory — Purchase Order (Orden de Compra)
+      455 +// ============================================================
+      456 +
+      457 +export type PurchaseOrderStatus =
+      458 +  | "borrador"
+      459 +  | "enviada"
+      460 +  | "recibida-parcial"
+      461 +  | "recibida-completa"
+      462 +  | "cancelada";
+      463 +
+      464 +export interface PurchaseOrderItem {
+      465 +  productId?: string;   // Optional: links to catalog product
+      466 +  productName: string;  // Snapshot
+      467 +  sku?: string;
+      468 +  unit: ProductUnit;
+      469 +  qty: number;
+      470 +  unitCost: number;
+      471 +  total: number;
+      472 +  receivedQty?: number; // For partial receipts
+      473 +}
+      474 +
+      475 +export interface PurchaseOrder {
+      476 +  id: string;
+      477 +  orderId: string;       // OC-YYYY-XXXXX
+      478 +  vendorId: string;
+      479 +  vendorName: string;
+      480 +  items: PurchaseOrderItem[];
+      481 +  subtotal: number;
+      482 +  total: number;
+      483 +  status: PurchaseOrderStatus;
+      484 +  notes?: string;
+      485 +  invoiceRef?: string;   // External nota de venta / invoice number
+      486 +  receivedAt?: Timestamp;
+      487 +  createdBy: string;
+      488 +  createdAt?: Timestamp;
+      489 +  updatedAt?: Timestamp;
+      490 +}
+      491 +
+      492 +// ============================================================
+      493 +// Inventory — Movement Log (Bitácora)
+      494 +// ============================================================
+      495 +
+      496 +export type InventoryMovementType =
+      497 +  | "compra"          // Received from supplier
+      498 +  | "venta-tienda"    // Sold via marketplace
+      499 +  | "uso-servicio"    // Used in a service ticket
+      500 +  | "ajuste-entrada"  // Manual positive adjustment
+      501 +  | "ajuste-salida"   // Manual negative adjustment
+      502 +  | "devolucion";     // Customer return
+      503 +
+      504 +export interface InventoryMovement {
+      505 +  id: string;
+      506 +  productId: string;
+      507 +  productName: string;    // Snapshot at time of movement
+      508 +  type: InventoryMovementType;
+      509 +  qty: number;            // Positive = in, Negative = out
+      510 +  stockBefore: number;
+      511 +  stockAfter: number;
+      512 +  unitCost?: number;
+      513 +  reference?: string;     // ticketId, orderId, orderId, etc.
+      514 +  note?: string;
+      515 +  createdBy: string;
+      516 +  createdAt?: Timestamp;
+      517 +}
+      518 +
+      519 +// ============================================================
+      520 +// Inventory — Helpers / Labels
+      521 +// ============================================================
+      522 +
+      523 +export const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
+      524 +  motor: "Motor",
+      525 +  transmision: "Transmisión",
+      526 +  suspension: "Suspensión",
+      527 +  frenos: "Frenos",
+      528 +  electrico: "Sistema Eléctrico",
+      529 +  neumaticos: "Neumáticos",
+      530 +  lubricantes: "Lubricantes",
+      531 +  carroceria: "Carrocería",
+      532 +  encendido: "Encendido",
+      533 +  herramientas: "Herramientas",
+      534 +  accesorios: "Accesorios",
+      535 +  otro: "Otro",
+      536 +};
+      537 +
+      538 +export const PRODUCT_UNIT_LABELS: Record<ProductUnit, string> = {
+      539 +  PZA: "Pieza",
+      540 +  LT: "Litro",
+      541 +  KIT: "Kit",
+      542 +  PAR: "Par",
+      543 +  JGO: "Juego",
+      544 +  MT: "Metro",
+      545 +};
+      546 +
+      547 +export const PURCHASE_ORDER_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
+      548 +  borrador: "Borrador",
+      549 +  enviada: "Enviada",
+      550 +  "recibida-parcial": "Recibida Parcial",
+      551 +  "recibida-completa": "Recibida Completa",
+      552 +  cancelada: "Cancelada",
+      553 +};
+      554 +
+      555 +export const INVENTORY_MOVEMENT_LABELS: Record<InventoryMovementType, string> = {
+      556 +  compra: "Compra a proveedor",
+      557 +  "venta-tienda": "Venta en tienda",
+      558 +  "uso-servicio": "Uso en servicio",
+      559 +  "ajuste-entrada": "Ajuste (entrada)",
+      560 +  "ajuste-salida": "Ajuste (salida)",
+      561 +  devolucion: "Devolución",
+      562 +};
+
+● Ahora actualizo PartItem para que soporte referencia opcional al catálogo:
+
+● Update(types\index.ts)
+  ⎿  Added 1 line
+      155  // ============================================================
+      156
+      157  export interface PartItem {
+      158 +  productId?: string; // Optional link to Product in catalog
+      159    name: string;
+      160    qty: number;
+      161    unitCost: number;
+
+● Ahora las reglas de Firestore y los índices en paralelo:
+
+● Update(firestore.rules)
+  ⎿  Added 30 lines
+       99        allow write: if false;
+      100      }
+      101
+      102 +    // ── Product Catalog ──────────────────────────────────────────────────────
+      103 +    match /products/{productId} {
+      104 +      // Anyone (including unauthenticated) can read active products — public marketplace
+      105 +      allow read: if true;
+      106 +      // Managers+ can create and update; Admins can delete (soft-delete via isActive)
+      107 +      allow create, update: if hasRole('manager');
+      108 +      allow delete: if hasRole('admin');
+      109 +    }
+      110 +
+      111 +    // ── Vendors (Proveedores) ────────────────────────────────────────────────
+      112 +    match /vendors/{vendorId} {
+      113 +      allow read: if hasRole('operador');
+      114 +      allow create, update: if hasRole('manager');
+      115 +      allow delete: if hasRole('admin');
+      116 +    }
+      117 +
+      118 +    // ── Purchase Orders (Órdenes de Compra) ──────────────────────────────────
+      119 +    match /purchase_orders/{orderId} {
+      120 +      allow read: if hasRole('manager');
+      121 +      allow create, update: if hasRole('manager');
+      122 +      allow delete: if hasRole('admin');
+      123 +    }
+      124 +
+      125 +    // ── Inventory Movements (Bitácora) ───────────────────────────────────────
+      126 +    // Written exclusively server-side via Admin SDK — no client writes
+      127 +    match /inventory_movements/{movementId} {
+      128 +      allow read: if hasRole('manager');
+      129 +      allow write: if false;
+      130 +    }
+      131 +
+      132    }
+      133  }
+
+● Update(firestore.indexes.json)
+  ⎿  Added 2 lines
+      37        ]
+      38      }
+      39    ],
+      40 +  ],
+      41    "fieldOverrides": []
+      42  }
+      43 +
+
+  Read 1 file (ctrl+o to expand)
+
+● Hay un ], duplicado que introduje. Reescribo el archivo completo:
+
+● Write(firestore.indexes.json)
+  ⎿  Added 66 lines, removed 2 lines
+       35          { "fieldPath": "createdAt", "order": "DESCENDING" },
+       36          { "fieldPath": "__name__",  "order": "DESCENDING" }
+       37        ]
+       38 +    },
+       39 +    {
+       40 +      "collectionGroup": "products",
+       41 +      "queryScope": "COLLECTION",
+       42 +      "fields": [
+       43 +        { "fieldPath": "isActive",  "order": "ASCENDING"  },
+       44 +        { "fieldPath": "category",  "order": "ASCENDING"  },
+       45 +        { "fieldPath": "createdAt", "order": "DESCENDING" },
+       46 +        { "fieldPath": "__name__",  "order": "DESCENDING" }
+       47 +      ]
+       48 +    },
+       49 +    {
+       50 +      "collectionGroup": "products",
+       51 +      "queryScope": "COLLECTION",
+       52 +      "fields": [
+       53 +        { "fieldPath": "isActive",  "order": "ASCENDING"  },
+       54 +        { "fieldPath": "vendorId",  "order": "ASCENDING"  },
+       55 +        { "fieldPath": "createdAt", "order": "DESCENDING" },
+       56 +        { "fieldPath": "__name__",  "order": "DESCENDING" }
+       57 +      ]
+       58 +    },
+       59 +    {
+       60 +      "collectionGroup": "products",
+       61 +      "queryScope": "COLLECTION",
+       62 +      "fields": [
+       63 +        { "fieldPath": "isActive",    "order": "ASCENDING"  },
+       64 +        { "fieldPath": "isFeatured",  "order": "ASCENDING"  },
+       65 +        { "fieldPath": "createdAt",   "order": "DESCENDING" },
+       66 +        { "fieldPath": "__name__",    "order": "DESCENDING" }
+       67 +      ]
+       68 +    },
+       69 +    {
+       70 +      "collectionGroup": "inventory_movements",
+       71 +      "queryScope": "COLLECTION",
+       72 +      "fields": [
+       73 +        { "fieldPath": "productId", "order": "ASCENDING"  },
+       74 +        { "fieldPath": "createdAt", "order": "DESCENDING" },
+       75 +        { "fieldPath": "__name__",  "order": "DESCENDING" }
+       76 +      ]
+       77 +    },
+       78 +    {
+       79 +      "collectionGroup": "inventory_movements",
+       80 +      "queryScope": "COLLECTION",
+       81 +      "fields": [
+       82 +        { "fieldPath": "type",      "order": "ASCENDING"  },
+       83 +        { "fieldPath": "createdAt", "order": "DESCENDING" },
+       84 +        { "fieldPath": "__name__",  "order": "DESCENDING" }
+       85 +      ]
+       86 +    },
+       87 +    {
+       88 +      "collectionGroup": "purchase_orders",
+       89 +      "queryScope": "COLLECTION",
+       90 +      "fields": [
+       91 +        { "fieldPath": "vendorId",  "order": "ASCENDING"  },
+       92 +        { "fieldPath": "createdAt", "order": "DESCENDING" },
+       93 +        { "fieldPath": "__name__",  "order": "DESCENDING" }
+       94 +      ]
+       95 +    },
+       96 +    {
+       97 +      "collectionGroup": "purchase_orders",
+       98 +      "queryScope": "COLLECTION",
+       99 +      "fields": [
+      100 +        { "fieldPath": "status",    "order": "ASCENDING"  },
+      101 +        { "fieldPath": "createdAt", "order": "DESCENDING" },
+      102 +        { "fieldPath": "__name__",  "order": "DESCENDING" }
+      103 +      ]
+      104      }
+      105    ],
+       40 -  ],
+      106    "fieldOverrides": []
+      107  }
+       43 -
+
+● Ahora los 4 archivos lib en paralelo:
+
+● Write(lib\auth-server.ts)
+  ⎿  Wrote 30 lines to lib\auth-server.ts
+       1 import { getAdminAuth, getAdminDb } from "./firebase-admin";
+       2 import type { NextRequest } from "next/server";
+       3 import type { UserRole } from "@/types";
+       4
+       5 const ROLE_WEIGHTS: Record<UserRole, number> = {
+       6   viewer: 1,
+       7   mecanico: 2,
+       8   operador: 3,
+       9   manager: 4,
+      10   admin: 5,
+     … +20 lines (ctrl+o to expand)
+
+● Write(lib\firestore\products.ts)
+  ⎿  Wrote 162 lines to lib\firestore\products.ts
+      1 import {
+      2   collection, doc, onSnapshot, addDoc, updateDoc, getDoc, getDocs,
+      3   serverTimestamp, query, orderBy, where, runTransaction,
+      4   type Unsubscribe,
+      5 } from "firebase/firestore";
+      6 import { getDb } from "@/lib/firebase";
+      7 import type {
+      8   Product, ProductCategory, InventoryMovement, InventoryMovementType,
+      9 } from "@/types";
+     … +152 lines (ctrl+o to expand)
+
+● Write(lib\firestore\vendors.ts)
+  ⎿  Wrote 62 lines to lib\firestore\vendors.ts
+       1 import {
+       2   collection, doc, onSnapshot, addDoc, updateDoc,
+       3   serverTimestamp, query, orderBy, where, type Unsubscribe,
+       4 } from "firebase/firestore";
+       5 import { getDb } from "@/lib/firebase";
+       6 import type { Vendor } from "@/types";
+       7
+       8 const COL = "vendors";
+       9
+      10 export function subscribeVendors(cb: (v: Vendor[]) => void): Unsubscribe {
+     … +52 lines (ctrl+o to expand)
+
+● Write(lib\firestore\purchase-orders.ts)
+  ⎿  Wrote 96 lines to lib\firestore\purchase-orders.ts
+      1 import {
+      2   collection, doc, onSnapshot, addDoc, updateDoc, getDoc,
+      3   serverTimestamp, query, orderBy, where, type Unsubscribe,
+      4 } from "firebase/firestore";
+      5 import { getDb } from "@/lib/firebase";
+      6 import { adjustStock } from "./products";
+      7 import type { PurchaseOrder, PurchaseOrderItem } from "@/types";
+      8
+      9 const COL = "purchase_orders";
+     … +86 lines (ctrl+o to expand)
+
+● Ahora las rutas API (las 3 en paralelo):
+
+● Bash(mkdir -p "C:\Users\diosd\sanpedromotocare\spm-platform\app\api\products\[id]" 2>/dev/null; mkdir -p
+      "C:\Users\diosd\sanpedromotocare\spm-platform\app\api\vendor…)
+  ⎿  done
+
+● Write(app\api\products\route.ts)
+  ⎿  Wrote 156 lines to app\api\products\route.ts
+       1 import { NextRequest, NextResponse } from "next/server";
+       2 import { getAdminDb } from "@/lib/firebase-admin";
+       3 import { getSessionUser, hasMinimumRole } from "@/lib/auth-server";
+       4 import { FieldValue } from "firebase-admin/firestore";
+       5 import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
+       6 import type { ProductCategory, ProductUnit } from "@/types";
+       7
+       8 const VALID_CATEGORIES: ProductCategory[] = [
+       9   "motor", "transmision", "suspension", "frenos", "electrico",
+      10   "neumaticos", "lubricantes", "carroceria", "encendido",
+     … +152 lines (ctrl+o to expand)
+
+● Write(app\api\products\[id]\route.ts)
+  ⎿  Wrote 125 lines to app\api\products\[id]\route.ts
+      1 import { NextRequest, NextResponse } from "next/server";
+      2 import { getAdminDb } from "@/lib/firebase-admin";
+      3 import { getSessionUser, hasMinimumRole } from "@/lib/auth-server";
+      4 import { FieldValue } from "firebase-admin/firestore";
+      5 import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
+      6
+      7 const limiter = createRateLimiter({ limit: 30, windowMs: 60_000 });
+      8
+      9 type Params = { params: Promise<{ id: string }> };
+     … +115 lines (ctrl+o to expand)
+
+● Write(app\api\vendors\route.ts)
+  ⎿  Wrote 85 lines to app\api\vendors\route.ts
+       1 import { NextRequest, NextResponse } from "next/server";
+       2 import { getAdminDb } from "@/lib/firebase-admin";
+       3 import { getSessionUser, hasMinimumRole } from "@/lib/auth-server";
+       4 import { FieldValue } from "firebase-admin/firestore";
+       5 import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
+       6
+       7 const limiter = createRateLimiter({ limit: 30, windowMs: 60_000 });
+       8
+       9 // ── GET /api/vendors ──────────────────────────────────────────────────────────
+      10 // Requires operador+
+     … +75 lines (ctrl+o to expand)
+
+● Ahora el seed script — el más importante, con todos los productos de la Nota de Venta #239 de MotoCruz:
+
+● Write(scripts\seed-motocruz.ts)
+  ⎿  Wrote 758 lines to scripts\seed-motocruz.ts
+       1 /**
+       2  * Seed script — Catálogo inicial MotoCruz (Proveedor 1004)
+       3  *
+       4  * Fuente: Nota de Venta #239, 21/04/2026
+       5  *         Rosa Isela Velez Yerbes · García, N.L. · motocruz417@gmail.com
+       6  *         Total factura: $28,101.88 MXN
+       7  *
+       8  * Uso:
+       9  *   npx tsx scripts/seed-motocruz.ts
+      10  *
+     … +760 lines (ctrl+o to expand)
+
+● Ahora agrego tsx como devDependency y el script seed:motocruz en package.json:
+
+● Update(package.json)
+  ⎿  Added 2 lines, removed 1 line
+      10      "test": "vitest run",
+      11      "test:watch": "vitest",
+      12      "test:coverage": "vitest run --coverage",
+      13 -    "typecheck": "tsc --noEmit"
+      13 +    "typecheck": "tsc --noEmit",
+      14 +    "seed:motocruz": "tsx scripts/seed-motocruz.ts"
+      15    },
+      16    "dependencies": {
+      17      "@google/generative-ai": "^0.24.1",
+
+● Update(package.json)
+  ⎿  Added 1 line
+      49      "happy-dom": "^20.9.0",
+      50      "tailwindcss": "^4",
+      51      "typescript": "^5",
+      52 +    "tsx": "^4.19.2",
+      53      "vitest": "^4.1.4"
+      54    }
+      55  }
+
+● Ahora instalo tsx y corro el typecheck para verificar que todo compile sin errores:
+
+● Bash(cd "C:\Users\diosd\sanpedromotocare\spm-platform" && npm install tsx --save-dev 2>&1 | tail -5)
+  ⎿  To address all issues (including breaking changes), run:
+       npm audit fix --force
+
+     Run `npm audit` for details.
+  ⎿  (timeout 1m)
+
+● Bash(cd "C:\Users\diosd\sanpedromotocare\spm-platform" && npx tsc --noEmit 2>&1)
+  ⎿  Error: Exit code 2
+     scripts/seed-motocruz.ts(14,25): error TS2307: Cannot find module 'dotenv' or its corresponding type declarations.
+  ⎿  You're out of extra usage · resets 1:20pm (America/Mexico_City)
+     /upgrade to increase your usage limit.
+
+✻ Worked for 9m 59s
+
+❯ /rate-limit-options
