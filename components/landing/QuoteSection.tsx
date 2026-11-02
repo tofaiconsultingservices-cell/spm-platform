@@ -125,7 +125,7 @@ export default function QuoteSection() {
                 ¿Prefieres contactarnos directo?
               </p>
               <a
-                href="https://wa.me/528181684518?text=Hola,%20necesito%20un%20mec%C3%A1nico%20para%20mi%20moto"
+                href="https://wa.me/528133880010?text=Hola,%20necesito%20un%20mec%C3%A1nico%20para%20mi%20moto"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl transition-all"

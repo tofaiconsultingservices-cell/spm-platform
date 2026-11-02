@@ -168,7 +168,7 @@ export default function TerminosPage() {
             <p>Para dudas sobre estos términos:</p>
             <ul className="list-none mt-2 space-y-1">
               <li>📧 <a href="mailto:admin@sanpedromotocare.com" className="text-[var(--color-spm-red)] hover:underline">admin@sanpedromotocare.com</a></li>
-              <li>📱 <a href="https://wa.me/528181684518" target="_blank" rel="noopener noreferrer" className="text-[var(--color-spm-red)] hover:underline">WhatsApp: +52 81 8168-4518</a></li>
+              <li>📱 <a href="https://wa.me/528133880010" target="_blank" rel="noopener noreferrer" className="text-[var(--color-spm-red)] hover:underline">WhatsApp: +52 81 3388-0010</a></li>
             </ul>
           </section>
         </div>

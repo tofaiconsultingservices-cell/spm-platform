@@ -68,8 +68,8 @@ export default function Footer() {
             </p>
             <div className="flex gap-2">
               {[
-                { icon: MessageCircle, href: "https://wa.me/528181684518", bg: "bg-green-600 hover:bg-green-700" },
-                { icon: Phone, href: "tel:+528181684518", bg: "bg-blue-600 hover:bg-blue-700" },
+                { icon: MessageCircle, href: "https://wa.me/528133880010", bg: "bg-green-600 hover:bg-green-700" },
+                { icon: Phone, href: "tel:+528133880010", bg: "bg-blue-600 hover:bg-blue-700" },
                 { icon: InstagramIcon, href: "https://instagram.com/sanpedromotocare", bg: "bg-pink-600 hover:bg-pink-700" },
                 { icon: FacebookIcon, href: "https://facebook.com/sanpedromotocare", bg: "bg-blue-800 hover:bg-blue-900" },
               ].map(({ icon: Icon, href, bg }, i) => (
@@ -120,7 +120,7 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold text-sm mb-4">Contacto</h4>
             <div className="space-y-3 text-slate-400 text-sm">
-              <p>📞 +52 81 8168-4518</p>
+              <p>📞 +52 81 3388-0010</p>
               <p>📱 WhatsApp disponible</p>
               <p>📧 admin@sanpedromotocare.com</p>
               <p className="pt-2">🕐 Lun–Dom 7am–9pm</p>

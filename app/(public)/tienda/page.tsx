@@ -215,7 +215,7 @@ function CartDrawer({
               <span className={`text-xl font-display font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{formatMXN(total)}</span>
             </div>
             <a
-              href={`https://wa.me/528181684518?text=${encodeURIComponent(
+              href={`https://wa.me/528133880010?text=${encodeURIComponent(
                 `Hola, quiero comprar:\n${items.map(i => `• ${i.qty}x ${i.product.shortName ?? i.product.name} — ${formatMXN(i.product.salePrice * i.qty)}`).join("\n")}\n\nTotal: ${formatMXN(total)}`
               )}`}
               target="_blank"
@@ -507,7 +507,7 @@ export default function TiendaPage() {
                 Cotizar servicio
                 <ChevronRight size={14} />
               </Link>
-              <a href="https://wa.me/528181684518" target="_blank" rel="noopener noreferrer"
+              <a href="https://wa.me/528133880010" target="_blank" rel="noopener noreferrer"
                 className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-semibold transition-all ${isDark ? "border-white/10 text-slate-300 hover:bg-white/5" : "border-gray-200 text-slate-700 hover:bg-gray-50"}`}>
                 Contactar por WhatsApp
               </a>

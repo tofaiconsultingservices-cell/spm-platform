@@ -125,7 +125,7 @@ export default function RootLayout({
               name: "SanPedroMotoCare",
               description: "Mecánicos certificados de motocicletas a domicilio en San Pedro Garza García y área metropolitana de Monterrey.",
               url: "https://sanpedromotocare.com",
-              telephone: "+52-81-8168-4518",
+              telephone: "+52-81-3388-0010",
               email: "admin@sanpedromotocare.com",
               image: "https://sanpedromotocare.com/images/logo.png",
               logo: "https://sanpedromotocare.com/images/logo.png",
@@ -154,7 +154,7 @@ export default function RootLayout({
               ],
               contactPoint: {
                 "@type": "ContactPoint",
-                telephone: "+52-81-8168-4518",
+                telephone: "+52-81-3388-0010",
                 contactType: "customer service",
                 email: "admin@sanpedromotocare.com",
                 availableLanguage: "Spanish",

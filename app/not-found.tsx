@@ -58,7 +58,7 @@ export default function NotFound() {
           Solicitar servicio
         </Link>
         <a
-          href="https://wa.me/528181684518?text=Hola%2C%20necesito%20ayuda"
+          href="https://wa.me/528133880010?text=Hola%2C%20necesito%20ayuda"
           target="_blank"
           rel="noopener noreferrer"
           className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold text-sm rounded-xl transition-all hover:scale-105"
