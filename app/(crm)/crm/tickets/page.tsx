@@ -56,7 +56,9 @@ async function sendPaymentLink(ticket: ServiceTicket): Promise<string | null> {
 }
 import { subscribeMechanics } from "@/lib/firestore/mechanics";
 import { subscribeActiveProducts, adjustStock } from "@/lib/firestore/products";
-import type { ServiceTicket, ServiceTicketStatus, Mechanic, Client, PaymentMethod, Product, PartItem } from "@/types";
+import { subscribeWorkshopServices } from "@/lib/firestore/services";
+import { buildServiceCharge, customerUnitPrice, roundMoney, SALE_MARKUP_PERCENT } from "@/lib/pricing";
+import type { ServiceTicket, ServiceTicketStatus, Mechanic, Client, PaymentMethod, Product, PartItem, WorkshopService, ServiceCharge } from "@/types";
 import {
   STATUS_LABELS, STATUS_COLORS, SERVICE_LABELS, NEXT_STATUS, STATUS_PIPELINE,
   PAYMENT_METHOD_LABELS,
@@ -431,9 +433,17 @@ function TicketDrawer({
   const [partSearch, setPartSearch]   = useState("");
   const [partDropdown, setPartDropdown] = useState(false);
 
+  const [workshopServices, setWorkshopServices] = useState<WorkshopService[]>([]);
+  const [charges, setCharges] = useState<ServiceCharge[]>([]);
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [serviceDropdown, setServiceDropdown] = useState(false);
+  const [oneOffName, setOneOffName] = useState("");
+  const [oneOffCost, setOneOffCost] = useState("");
+
   useEffect(() => {
     const unsub = subscribeActiveProducts(setProducts);
-    return unsub;
+    const unsubServices = subscribeWorkshopServices(setWorkshopServices);
+    return () => { unsub(); unsubServices(); };
   }, []);
 
   useEffect(() => {
@@ -446,8 +456,12 @@ function TicketDrawer({
       setDiagnosis(ticket.diagnosis ?? "");
       setSelectedMechanic(ticket.mechanicId ?? "");
       setParts(ticket.parts ?? []);
+      setCharges(ticket.serviceCharges ?? []);
       setPartSearch("");
       setPartDropdown(false);
+      setServiceSearch("");
+      setOneOffName("");
+      setOneOffCost("");
       setShowLinkForm(false);
       setLinkAmount("");
       setLinkSendWa(true);
@@ -609,13 +623,16 @@ function TicketDrawer({
     setSaving(true);
     try {
       const mechanic = mechanics.find(m => m.id === selectedMechanic);
+      const partsTotal = parts.reduce((sum, part) => sum + (Number(part.total) || 0), 0);
+      const servicesTotal = charges.reduce((sum, charge) => sum + (Number(charge.total) || 0), 0);
+      const customerTotal = roundMoney(partsTotal + servicesTotal);
       await updateTicketFields(ticket!.id, {
-        ...(costs.estimated !== "" ? { estimatedCost: Number(costs.estimated) } : {}),
-        ...(costs.final      !== "" ? { finalCost:     Number(costs.final)     } : {}),
+        ...(charges.length > 0 ? { estimatedCost: customerTotal, finalCost: customerTotal } : {}),
         ...(costs.anticipo   !== "" ? { anticipo:      Number(costs.anticipo)  } : {}),
         ...(diagnosis        !== "" ? { diagnosis }                              : {}),
         ...(selectedMechanic        ? { mechanicId: selectedMechanic, mechanicName: mechanic?.name } : {}),
         parts,
+        serviceCharges: charges,
       });
       toast.success("Actualizado");
       setEditCost(false);
@@ -631,16 +648,55 @@ function TicketDrawer({
         : p
       ));
     } else {
+      const unitPrice = customerUnitPrice(product);
       setParts(prev => [...prev, {
         productId: product.id,
         name: product.shortName ?? product.name,
         qty: 1,
-        unitCost: product.salePrice,
-        total: product.salePrice,
+        unitCost: unitPrice,
+        total: unitPrice,
       }]);
     }
     setPartSearch("");
     setPartDropdown(false);
+  }
+
+  function addServiceFromCatalog(service: WorkshopService) {
+    const line = buildServiceCharge({
+      name: service.name,
+      costPrice: service.costPrice,
+      serviceId: service.id,
+      code: service.code,
+    });
+    setCharges(prev => {
+      const existing = prev.findIndex(c => c.serviceId === service.id);
+      if (existing < 0) return [...prev, line];
+      return prev.map((c, i) => i === existing
+        ? buildServiceCharge({ name: c.name, costPrice: c.costPrice, qty: c.qty + 1, serviceId: c.serviceId, code: c.code })
+        : c);
+    });
+    setServiceSearch("");
+    setServiceDropdown(false);
+  }
+
+  function addOneOffService() {
+    const cost = Number(oneOffCost);
+    if (!oneOffName.trim() || !Number.isFinite(cost) || cost < 0) {
+      toast.error("Escribe el nombre y el costo del servicio");
+      return;
+    }
+    setCharges(prev => [...prev, buildServiceCharge({ name: oneOffName, costPrice: cost })]);
+    setOneOffName("");
+    setOneOffCost("");
+  }
+
+  function updateChargeQty(index: number, qty: number) {
+    setCharges(prev => {
+      if (qty <= 0) return prev.filter((_, i) => i !== index);
+      return prev.map((c, i) => i === index
+        ? buildServiceCharge({ name: c.name, costPrice: c.costPrice, qty, serviceId: c.serviceId, code: c.code })
+        : c);
+    });
   }
 
   function updatePartQty(index: number, qty: number) {
@@ -736,22 +792,18 @@ function TicketDrawer({
             </div>
             {editCost ? (
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Estimado $</label>
-                    <input type="number" className={inputCls} placeholder="0"
-                      value={costs.estimated} onChange={e => setCosts(p => ({ ...p, estimated: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Anticipo $</label>
-                    <input type="number" className={inputCls} placeholder="0"
-                      value={costs.anticipo} onChange={e => setCosts(p => ({ ...p, anticipo: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Final $</label>
-                    <input type="number" className={inputCls} placeholder="0"
-                      value={costs.final} onChange={e => setCosts(p => ({ ...p, final: e.target.value }))} />
-                  </div>
+                <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                  El precio al cliente de cada servicio es el costo + {SALE_MARKUP_PERCENT}% y no se edita. Agrégalo en Servicios del taller.
+                  {charges.length > 0 && (
+                    <> Al guardar, el total del ticket queda en ${roundMoney(
+                      charges.reduce((s, c) => s + c.total, 0) + parts.reduce((s, p) => s + p.total, 0)
+                    ).toLocaleString("es-MX")}.</>
+                  )}
+                </p>
+                <div>
+                  <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Anticipo de visita $</label>
+                  <input type="number" min="0" className={inputCls} placeholder="0"
+                    value={costs.anticipo} onChange={e => setCosts(p => ({ ...p, anticipo: e.target.value }))} />
                 </div>
                 <div>
                   <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Diagnóstico / notas internas</label>
@@ -771,6 +823,94 @@ function TicketDrawer({
                     <p className={`font-bold text-sm ${isDark ? "text-white" : "text-slate-900"}`}>
                       {value != null ? `$${value.toLocaleString("es-MX")}` : "—"}
                     </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Servicios del taller ───────────────────────────────────── */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Wrench size={14} className="text-[var(--color-spm-red)]" />
+              <span className={`text-xs font-semibold uppercase tracking-wide flex-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>Servicios del taller</span>
+              {charges.length > 0 && (
+                <span className={`text-xs font-semibold ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                  ${charges.reduce((s, c) => s + c.total, 0).toLocaleString("es-MX")}
+                </span>
+              )}
+            </div>
+            <div className="relative mb-2">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                className={inputCls + " pl-8 text-sm"}
+                placeholder="Buscar servicio con precio..."
+                value={serviceSearch}
+                onChange={e => { setServiceSearch(e.target.value); setServiceDropdown(true); }}
+                onFocus={() => setServiceDropdown(true)}
+                onBlur={() => setTimeout(() => setServiceDropdown(false), 180)}
+              />
+              {serviceDropdown && serviceSearch.trim() && (
+                <div className={`absolute top-full left-0 right-0 mt-1 rounded-xl border shadow-xl z-20 max-h-48 overflow-y-auto ${isDark ? "bg-slate-800 border-white/10" : "bg-white border-gray-200"}`}>
+                  {workshopServices
+                    .filter(s => s.isActive && (
+                      s.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||
+                      s.code.toLowerCase().includes(serviceSearch.toLowerCase())
+                    ))
+                    .slice(0, 8)
+                    .map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onMouseDown={() => addServiceFromCatalog(s)}
+                        className={`w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-[var(--color-spm-red)]/10 border-b last:border-0 ${isDark ? "border-white/5" : "border-gray-100"}`}
+                      >
+                        <div className="min-w-0">
+                          <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-slate-900"}`}>{s.name}</p>
+                          <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>{s.code} · costo ${s.costPrice.toLocaleString("es-MX")}</p>
+                        </div>
+                        <span className={`text-xs font-semibold ml-3 ${isDark ? "text-slate-300" : "text-slate-700"}`}>${customerUnitPrice(s).toLocaleString("es-MX")}</span>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-[1fr_88px_auto] gap-2 mb-2">
+              <input className={inputCls} placeholder="Servicio suelto" value={oneOffName}
+                onChange={e => setOneOffName(e.target.value)} />
+              <input type="number" min="0" step="0.01" className={inputCls} placeholder="Costo" value={oneOffCost}
+                onChange={e => setOneOffCost(e.target.value)} />
+              <button type="button" onClick={addOneOffService}
+                className="px-3 rounded-xl bg-slate-700 text-white text-xs font-semibold">
+                +{SALE_MARKUP_PERCENT}%
+              </button>
+            </div>
+            {oneOffCost !== "" && Number(oneOffCost) >= 0 && (
+              <p className={`text-xs mb-2 ${isDark ? "text-emerald-300" : "text-emerald-700"}`}>
+                Precio al cliente: ${customerUnitPrice({ costPrice: Number(oneOffCost) }).toLocaleString("es-MX")} · utilidad ${ (customerUnitPrice({ costPrice: Number(oneOffCost) }) - Number(oneOffCost)).toLocaleString("es-MX") }
+              </p>
+            )}
+            {charges.length > 0 && (
+              <div className="space-y-1.5">
+                {charges.map((charge, i) => (
+                  <div key={`${charge.serviceId ?? charge.name}-${i}`} className={`flex items-center gap-2 p-2.5 rounded-xl ${isDark ? "bg-slate-800/60" : "bg-slate-50"}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-slate-900"}`}>{charge.name}</p>
+                      <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                        costo ${charge.costPrice.toLocaleString("es-MX")} · venta ${charge.unitPrice.toLocaleString("es-MX")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button type="button" onClick={() => updateChargeQty(i, charge.qty - 1)}
+                        className={`w-6 h-6 rounded-md flex items-center justify-center text-xs ${isDark ? "bg-slate-700 text-white" : "bg-gray-200 text-slate-700"}`}>−</button>
+                      <span className={`text-sm font-semibold w-6 text-center ${isDark ? "text-white" : "text-slate-900"}`}>{charge.qty}</span>
+                      <button type="button" onClick={() => updateChargeQty(i, charge.qty + 1)}
+                        className={`w-6 h-6 rounded-md flex items-center justify-center text-xs ${isDark ? "bg-slate-700 text-white" : "bg-gray-200 text-slate-700"}`}>+</button>
+                      <button type="button" onClick={() => setCharges(prev => prev.filter((_, j) => j !== i))}
+                        className="w-6 h-6 rounded-md flex items-center justify-center text-red-400">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -819,7 +959,7 @@ function TicketDrawer({
                           <p className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-slate-900"}`}>{p.shortName ?? p.name}</p>
                           <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>{p.sku} · stock: {p.stock}</p>
                         </div>
-                        <span className={`text-xs font-semibold ml-3 flex-shrink-0 ${isDark ? "text-slate-300" : "text-slate-700"}`}>${p.salePrice.toLocaleString("es-MX")}</span>
+                        <span className={`text-xs font-semibold ml-3 flex-shrink-0 ${isDark ? "text-slate-300" : "text-slate-700"}`}>${customerUnitPrice(p).toLocaleString("es-MX")}</span>
                       </button>
                     ))
                   }

@@ -10,7 +10,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard, Ticket, Users, Wrench, FileText, CreditCard,
   Phone, BarChart3, Settings, LogOut, Menu, X,
-  Sun, Moon, Globe, Loader2, Bot, Package,
+  Sun, Moon, Globe, Loader2, Bot, Package, ClipboardList,
 } from "lucide-react";
 import CrmAiPanel from "@/components/crm/CrmAiPanel";
 
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/crm/clientes",       label: "Clientes",        icon: Users },
   { href: "/crm/mecanicos",      label: "Mecánicos",       icon: Wrench },
   { href: "/crm/inventario",     label: "Inventario",      icon: Package },
+  { href: "/crm/servicios",      label: "Servicios",       icon: ClipboardList },
   { href: "/crm/pagos",          label: "Pagos",           icon: CreditCard },
   { href: "/crm/facturas",       label: "Facturas",        icon: FileText },
   { href: "/crm/contact-center", label: "Contact Center",  icon: Phone },

@@ -88,7 +88,7 @@ describe("POST /api/payments/webhook", () => {
 
     mockGet.mockResolvedValue({
       empty: false,
-      docs: [{ ref: { update: mockUpdate } }],
+      docs: [{ ref: { update: mockUpdate }, data: () => ({}) }],
     });
 
     const res = await callWebhook(JSON.stringify({}));
@@ -123,7 +123,7 @@ describe("POST /api/payments/webhook", () => {
 
     mockGet.mockResolvedValue({
       empty: false,
-      docs: [{ ref: { update: mockUpdate } }],
+      docs: [{ ref: { update: mockUpdate }, data: () => ({}) }],
     });
 
     const res = await callWebhook(JSON.stringify({}));

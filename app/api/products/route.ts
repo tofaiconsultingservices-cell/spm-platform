@@ -4,6 +4,7 @@ import { getSessionUser, hasMinimumRole } from "@/lib/auth-server";
 import { FieldValue } from "firebase-admin/firestore";
 import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
 import type { ProductCategory, ProductUnit } from "@/types";
+import { salePriceFromCost } from "@/lib/pricing";
 
 const VALID_CATEGORIES: ProductCategory[] = [
   "motor", "transmision", "suspension", "frenos", "electrico",
@@ -14,6 +15,13 @@ const VALID_UNITS: ProductUnit[] = ["PZA", "LT", "KIT", "PAR", "JGO", "MT"];
 
 const readLimiter  = createRateLimiter({ limit: 60, windowMs: 60_000 });
 const writeLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
+
+function salePriceFromStored(costPrice: unknown, salePrice: unknown): number {
+  const cost = Number(costPrice);
+  if (Number.isFinite(cost) && cost >= 0) return salePriceFromCost(cost);
+  const sale = Number(salePrice);
+  return Number.isFinite(sale) && sale >= 0 ? sale : 0;
+}
 
 // ── GET /api/products ─────────────────────────────────────────────────────────
 // Public. Optional query params: category, vendorId, inStock, featured, limit
@@ -56,7 +64,7 @@ export async function GET(req: NextRequest) {
         unit: data.unit,
         compatibleModels: data.compatibleModels ?? [],
         vendorId: data.vendorId ?? null,
-        salePrice: data.salePrice,
+        salePrice: salePriceFromStored(data.costPrice, data.salePrice),
         stock: data.stock,
         minStock: data.minStock,
         imageUrls: data.imageUrls ?? [],
@@ -97,28 +105,31 @@ export async function POST(req: NextRequest) {
   const category  = body.category as ProductCategory;
   const unit      = (body.unit ?? "PZA") as ProductUnit;
   const costPrice = Number(body.costPrice);
-  const salePrice = Number(body.salePrice);
   const stock     = Number(body.stock ?? 0);
   const minStock  = Number(body.minStock ?? 2);
+  const customSku = String(body.sku ?? "").trim().slice(0, 40);
 
   if (!name)                                  return NextResponse.json({ error: "name is required" }, { status: 400 });
   if (!VALID_CATEGORIES.includes(category))   return NextResponse.json({ error: "Invalid category" }, { status: 400 });
   if (!VALID_UNITS.includes(unit))            return NextResponse.json({ error: "Invalid unit" }, { status: 400 });
   if (isNaN(costPrice) || costPrice < 0)      return NextResponse.json({ error: "Invalid costPrice" }, { status: 400 });
-  if (isNaN(salePrice) || salePrice < 0)      return NextResponse.json({ error: "Invalid salePrice" }, { status: 400 });
   if (isNaN(stock) || stock < 0)              return NextResponse.json({ error: "Invalid stock" }, { status: 400 });
+
+  const salePrice = salePriceFromCost(costPrice);
 
   try {
     const db = getAdminDb();
     const counterRef = db.collection("_counters").doc("products");
 
-    let sku = "";
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(counterRef);
-      const count = (snap.data()?.count ?? 0) + 1;
-      sku = `PRD-${String(count).padStart(5, "0")}`;
-      tx.set(counterRef, { count }, { merge: true });
-    });
+    let sku = customSku;
+    if (!sku) {
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(counterRef);
+        const count = (snap.data()?.count ?? 0) + 1;
+        sku = `PRD-${String(count).padStart(5, "0")}`;
+        tx.set(counterRef, { count }, { merge: true });
+      });
+    }
 
     const compatibleModels = Array.isArray(body.compatibleModels)
       ? (body.compatibleModels as unknown[]).map(String).slice(0, 30)
@@ -136,6 +147,7 @@ export async function POST(req: NextRequest) {
       compatibleModels,
       vendorId: body.vendorId ? String(body.vendorId).slice(0, 50) : null,
       vendorSku: body.vendorSku ? String(body.vendorSku).slice(0, 50) : null,
+      supplierName: body.supplierName ? String(body.supplierName).trim().slice(0, 120) : null,
       costPrice,
       salePrice,
       stock,

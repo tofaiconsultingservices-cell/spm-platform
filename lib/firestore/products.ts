@@ -1,9 +1,10 @@
 import {
-  collection, doc, onSnapshot, addDoc, updateDoc, getDoc, getDocs,
+  collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, getDoc, getDocs,
   serverTimestamp, query, orderBy, where, runTransaction,
   type Unsubscribe,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
+import { salePriceFromCost } from "@/lib/pricing";
 import type {
   Product, ProductCategory, InventoryMovement, InventoryMovementType,
 } from "@/types";
@@ -71,23 +72,34 @@ export async function getLowStockProducts(): Promise<Product[]> {
 // ── Writes ───────────────────────────────────────────────────────────────────
 
 export async function createProduct(
-  data: Omit<Product, "id" | "sku" | "createdAt" | "updatedAt">
+  data: Omit<Product, "id" | "sku" | "salePrice" | "createdAt" | "updatedAt"> & { sku?: string }
 ): Promise<string> {
   const db = getDb();
-  const { runTransaction: fsTx, doc: fsDoc } = await import("firebase/firestore");
-  const counterRef = fsDoc(db, "_counters", "products");
+  const { sku: requestedRaw, ...rest } = data;
+  const requestedSku = requestedRaw?.trim().slice(0, 40) ?? "";
 
-  let sku = "";
-  await fsTx(db, async (tx) => {
-    const snap = await tx.get(counterRef);
-    const count = (snap.data()?.count ?? 0) + 1;
-    sku = `PRD-${String(count).padStart(5, "0")}`;
-    tx.set(counterRef, { count }, { merge: true });
-  });
+  let sku = requestedSku;
+  if (!sku) {
+    const { runTransaction: fsTx, doc: fsDoc } = await import("firebase/firestore");
+    const counterRef = fsDoc(db, "_counters", "products");
+    await fsTx(db, async (tx) => {
+      const snap = await tx.get(counterRef);
+      const count = (snap.data()?.count ?? 0) + 1;
+      sku = `PRD-${String(count).padStart(5, "0")}`;
+      tx.set(counterRef, { count }, { merge: true });
+    });
+  }
 
+  const costPrice = Number(rest.costPrice);
+  const clean = Object.fromEntries(
+    Object.entries(rest).filter(([, value]) => value !== undefined)
+  );
   const ref = await addDoc(collection(db, COL), {
-    ...data,
+    ...clean,
     sku,
+    costPrice,
+    salePrice: salePriceFromCost(costPrice),
+    supplierName: rest.supplierName?.trim() || null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -96,12 +108,30 @@ export async function createProduct(
 
 export async function updateProduct(
   id: string,
-  fields: Partial<Omit<Product, "id" | "sku" | "createdAt">>
+  fields: Partial<Omit<Product, "id" | "createdAt">>
 ): Promise<void> {
+  const next: Record<string, unknown> = { ...fields };
+  if (fields.costPrice != null) {
+    const costPrice = Number(fields.costPrice);
+    next.costPrice = costPrice;
+    next.salePrice = salePriceFromCost(costPrice);
+  } else {
+    delete next.salePrice;
+  }
+  if (typeof next.supplierName === "string") {
+    next.supplierName = next.supplierName.trim();
+  }
+  for (const key of Object.keys(next)) {
+    if (next[key] === undefined) delete next[key];
+  }
   await updateDoc(doc(getDb(), COL, id), {
-    ...fields,
+    ...next,
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  await deleteDoc(doc(getDb(), COL, id));
 }
 
 // ── Stock Management ─────────────────────────────────────────────────────────
