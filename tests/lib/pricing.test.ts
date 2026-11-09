@@ -86,5 +86,16 @@ describe("margen fijo del taller (productos y servicios)", () => {
   it("rechaza un servicio sin nombre o con cantidad inválida", () => {
     expect(() => buildServiceCharge({ name: "   ", costPrice: 10 })).toThrow(/nombre/i);
     expect(() => buildServiceCharge({ name: "Frenos", costPrice: 10, qty: 0 })).toThrow(/cantidad/i);
+    expect(() => buildServiceCharge({ name: "Frenos", costPrice: 10, qty: Number.NaN })).toThrow(/cantidad/i);
+  });
+
+  it("arma una línea suelta sin id ni código", () => {
+    expect(buildServiceCharge({ name: "Ajuste", costPrice: 10 })).toEqual({
+      name: "Ajuste",
+      qty: 1,
+      costPrice: 10,
+      unitPrice: 12,
+      total: 12,
+    });
   });
 });
