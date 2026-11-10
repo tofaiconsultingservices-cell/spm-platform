@@ -2,12 +2,12 @@
 
 import { useTheme } from "@/contexts/ThemeContext";
 import {
-  Droplets, Settings, Zap, Link2, ShieldCheck, Battery, Cog, Wrench,
+  Droplets, Settings, Link2, ShieldCheck, Battery, Cog, Snowflake, Route, Sparkles,
   CheckCircle2, ChevronRight, MessageCircle, Star,
 } from "lucide-react";
 
 /**
- * Paquete promocional "Pro Rider".
+ * Paquete promocional "Pro Rider" — Edición Navidad.
  * Edita estos valores para cambiar precio y vigencia.
  * Si `precio` es null, se muestra "Precio especial — pregúntanos".
  */
@@ -15,12 +15,12 @@ const PROMO = {
   nombre: "Pro Rider",
   precio: null as string | null,        // ej. "1,499"
   precioRegular: null as string | null, // ej. "1,990"
-  vigencia: null as string | null,      // ej. "Válido hasta el 31 de diciembre"
+  vigencia: "Válido hasta el 31 de diciembre · Lugares limitados" as string | null,
 };
 
 const WHATSAPP_URL =
   "https://wa.me/528133880010?text=" +
-  encodeURIComponent(`Hola, me interesa el Paquete ${PROMO.nombre} para mi moto`);
+  encodeURIComponent(`Hola, me interesa el Paquete ${PROMO.nombre} Navidad para mi moto`);
 
 const INCLUYE = [
   { icon: Droplets, title: "Aceite y filtro", desc: "Aceite de la viscosidad que pide tu moto y filtro nuevo." },
@@ -29,8 +29,8 @@ const INCLUYE = [
   { icon: ShieldCheck, title: "Frenos", desc: "Revisión de balatas, discos y nivel de líquido." },
   { icon: Battery, title: "Batería y eléctrico", desc: "Prueba de carga, luces, direccionales y claxon." },
   { icon: Cog, title: "Llantas y suspensión", desc: "Presión, desgaste y revisión de fugas en barras." },
-  { icon: Zap, title: "Diagnóstico general", desc: "Revisión de puntos clave y reporte de lo que encontremos." },
-  { icon: Droplets, title: "Lavado", desc: "Tu moto queda limpia y lista para rodar." },
+  { icon: Route, title: "Revisión para carretera", desc: "Puntos de seguridad antes de tus viajes de fin de año." },
+  { icon: Sparkles, title: "Detallado premium con cera", desc: "Lavado, cera y abrillantado para que luzca en las fiestas." },
 ];
 
 export default function PromoSection() {
@@ -51,18 +51,19 @@ export default function PromoSection() {
               <span
                 className={`self-start inline-block px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-widest ${
                   isDark
-                    ? "bg-green-950/50 text-green-400 border border-green-900/50"
-                    : "bg-green-50 text-green-700 border border-green-200"
+                    ? "bg-red-950/50 text-red-400 border border-red-900/50"
+                    : "bg-red-50 text-red-700 border border-red-200"
                 }`}
               >
-                Promoción de temporada
+                <Snowflake size={14} className="inline -mt-0.5 mr-1.5" aria-hidden="true" />Edición Navidad
               </span>
               <h2 className="font-display font-bold text-4xl sm:text-5xl lg:text-6xl leading-tight">
                 Paquete <span className="gradient-text">{PROMO.nombre}</span>
               </h2>
               <p className={`text-lg max-w-xl ${muted}`}>
-                Servicio completo para que tu moto ruede como nueva, más un bonus de
-                modificación. Todo en una sola visita, en tu puerta.
+                Prepara tu moto para las posadas y la carretera de fin de año: servicio
+                completo, detallado premium, un accesorio instalado sin costo y entrega con
+                moño. Todo en tu puerta.
               </p>
               <div className="flex flex-wrap items-center gap-4 mt-2">
                 <a
@@ -104,7 +105,7 @@ export default function PromoSection() {
                 <p className="font-display font-bold text-3xl">Precio especial — pregúntanos</p>
               )}
               <ul className={`flex flex-col gap-2.5 text-sm ${isDark ? "text-slate-300" : "text-slate-700"}`}>
-                {["8 servicios incluidos", "Mano de obra de 1 modificación sin costo", "Lugares limitados por semana"].map((t) => (
+                {["8 servicios incluidos", "Mano de obra de 1 modificación sin costo", "Entrega con moño navideño"].map((t) => (
                   <li key={t} className="flex items-center gap-2">
                     <CheckCircle2 size={18} className="text-[var(--color-spm-orange)] shrink-0" />
                     {t}
@@ -140,24 +141,25 @@ export default function PromoSection() {
           <div className="bg-gradient-to-r from-[var(--color-spm-red)] to-[var(--color-spm-red-dark)] text-white px-8 lg:px-12 py-10 flex flex-col md:flex-row md:items-center gap-6 justify-between">
             <div className="flex flex-col gap-2 max-w-3xl">
               <span className="text-xs font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2">
-                <Star size={14} fill="white" /> Bonus de modificación
+                <Star size={14} fill="white" /> Regalo doble de Navidad
               </span>
               <p className="font-display font-bold text-2xl lg:text-3xl">
-                Instalación de 1 accesorio sin costo de mano de obra
+                1 accesorio instalado gratis + entrega con moño
               </p>
               <p className="text-white/85 text-sm lg:text-base">
                 Elige uno: kit de luces LED, sliders, porta placa corto, espejos o manubrio.
-                Tú traes la pieza o te la cotizamos.
+                Tú traes la pieza o te la cotizamos. ¿Lo quieres regalar? También lo
+                vendemos como tarjeta de regalo.
               </p>
             </div>
-            <Wrench size={72} className="text-white/30 shrink-0 hidden md:block" aria-hidden="true" />
+            <Snowflake size={72} className="text-white/30 shrink-0 hidden md:block" aria-hidden="true" />
           </div>
 
           {/* Conditions */}
           <div className={`px-8 lg:px-12 py-6 text-xs leading-relaxed ${muted}`}>
             Refacciones adicionales detectadas en la revisión se cotizan antes de instalarse. El
             accesorio del bonus no está incluido, solo la mano de obra. Motos de alta cilindrada
-            pueden tener ajuste de precio. Sujeto a disponibilidad de agenda.
+            pueden tener ajuste de precio. Válido hasta el 31 de diciembre, sujeto a disponibilidad de agenda.
           </div>
         </div>
       </div>
