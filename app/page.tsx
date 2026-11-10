@@ -1,5 +1,6 @@
 import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
+import PromoSection from "@/components/landing/PromoSection";
 import ServicesSection from "@/components/landing/ServicesSection";
 import TrackingSection from "@/components/landing/TrackingSection";
 import QuoteSection from "@/components/landing/QuoteSection";
@@ -13,6 +14,7 @@ export default function HomePage() {
     <main>
       <Navbar />
       <HeroSection />
+      <PromoSection />
       <ServicesSection />
       <TrackingSection />
       <QuoteSection />
