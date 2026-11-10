@@ -8,15 +8,19 @@ import {
 
 /**
  * Paquete promocional "Pro Rider" — Edición Navidad.
- * Edita estos valores para cambiar precio y vigencia.
- * Si `precio` es null, se muestra "Precio especial — pregúntanos".
+ * Edita estos valores para cambiar precios y vigencia.
  */
 const PROMO = {
   nombre: "Pro Rider",
-  precio: null as string | null,        // ej. "1,499"
-  precioRegular: null as string | null, // ej. "1,990"
   vigencia: "Válido hasta el 31 de diciembre · Lugares limitados" as string | null,
 };
+
+const PRECIOS = [
+  { rango: "150–250 cc", ejemplos: "Italika, Vento, Pulsar, Gixxer, FZ, scooters", precio: "1,299", antes: "1,690" },
+  { rango: "251–500 cc", ejemplos: "MT-03, Duke 390, Ninja 400, Rebel, Royal Enfield", precio: "1,999", antes: "2,590" },
+  { rango: "501–900 cc", ejemplos: "MT-07, Z650, Z900, CB650R, V-Strom 650", precio: "2,999", antes: "3,890" },
+  { rango: "901 cc o más", ejemplos: "GSX-S1000, S1000RR, Harley-Davidson, BMW GS", precio: "4,499", antes: "5,790" },
+];
 
 const WHATSAPP_URL =
   "https://wa.me/528133880010?text=" +
@@ -90,20 +94,14 @@ export default function PromoSection() {
               }`}
             >
               <span className={`text-xs font-semibold uppercase tracking-widest ${muted}`}>
-                Precio de promoción
+                Precio navideño desde
               </span>
-              {PROMO.precio ? (
-                <div>
-                  <p className="font-display font-bold text-5xl">${PROMO.precio} <span className={`text-base font-medium ${muted}`}>MXN</span></p>
-                  {PROMO.precioRegular && (
-                    <p className={`text-sm mt-1 ${muted}`}>
-                      Precio regular <span className="line-through">${PROMO.precioRegular}</span>
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="font-display font-bold text-3xl">Precio especial — pregúntanos</p>
-              )}
+              <div>
+                <p className="font-display font-bold text-5xl">${PRECIOS[0].precio} <span className={`text-base font-medium ${muted}`}>MXN</span></p>
+                <p className={`text-sm mt-1 ${muted}`}>
+                  Motos de {PRECIOS[0].rango} · antes <span className="line-through">${PRECIOS[0].antes}</span>
+                </p>
+              </div>
               <ul className={`flex flex-col gap-2.5 text-sm ${isDark ? "text-slate-300" : "text-slate-700"}`}>
                 {["8 servicios incluidos", "Mano de obra de 1 modificación sin costo", "Entrega con moño navideño"].map((t) => (
                   <li key={t} className="flex items-center gap-2">
@@ -113,6 +111,27 @@ export default function PromoSection() {
                 ))}
               </ul>
               {PROMO.vigencia && <p className={`text-xs ${muted}`}>{PROMO.vigencia}</p>}
+            </div>
+          </div>
+
+          {/* Prices by displacement */}
+          <div className="px-8 lg:px-12 pb-10">
+            <h3 className="font-display font-bold text-2xl mb-1">Precio por cilindraje</h3>
+            <p className={`text-sm mb-6 ${muted}`}>Mismo paquete, a la medida de tu moto.</p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {PRECIOS.map(({ rango, ejemplos, precio, antes }) => (
+                <div
+                  key={rango}
+                  className={`p-5 rounded-2xl border flex flex-col gap-2 ${
+                    isDark ? "bg-slate-950/60 border-white/5" : "bg-slate-50 border-slate-200"
+                  }`}
+                >
+                  <p className={`font-display font-bold text-xl ${isDark ? "text-white" : "text-slate-900"}`}>{rango}</p>
+                  <p className={`text-xs leading-relaxed ${muted}`}>{ejemplos}</p>
+                  <p className="font-display font-bold text-3xl text-[var(--color-spm-red)] mt-2">${precio}</p>
+                  <p className={`text-xs ${muted}`}>antes <span className="line-through">${antes}</span> MXN</p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -158,8 +177,9 @@ export default function PromoSection() {
           {/* Conditions */}
           <div className={`px-8 lg:px-12 py-6 text-xs leading-relaxed ${muted}`}>
             Refacciones adicionales detectadas en la revisión se cotizan antes de instalarse. El
-            accesorio del bonus no está incluido, solo la mano de obra. Motos de alta cilindrada
-            pueden tener ajuste de precio. Válido hasta el 31 de diciembre, sujeto a disponibilidad de agenda.
+            accesorio del bonus no está incluido, solo la mano de obra. El precio depende del
+            cilindraje de tu moto; aceite sintético premium o bujías de iridio pueden tener costo
+            adicional. Válido hasta el 31 de diciembre, sujeto a disponibilidad de agenda.
           </div>
         </div>
       </div>
