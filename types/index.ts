@@ -162,6 +162,17 @@ export interface PartItem {
   total: number;
 }
 
+/** Servicio cobrado en un ticket. unitPrice siempre es costPrice × 1.20. */
+export interface ServiceCharge {
+  serviceId?: string;
+  code?: string;
+  name: string;
+  qty: number;
+  costPrice: number;
+  unitPrice: number;
+  total: number;
+}
+
 export interface TicketEvent {
   status: ServiceTicketStatus;
   timestamp: Timestamp;
@@ -190,6 +201,8 @@ export interface ServiceTicket {
   anticipo?: number;
   finalCost?: number;
   parts?: PartItem[];
+  /** Mano de obra / servicios del taller. El precio al cliente es costo × 1.20. */
+  serviceCharges?: ServiceCharge[];
   source: LeadSource;
   statusHistory?: TicketEvent[];
   rating?: number;
@@ -420,14 +433,34 @@ export interface Product {
   compatibleModels: string[]; // e.g. ["FT150", "DM200", "125Z"]
   vendorId?: string;
   vendorSku?: string;
-  costPrice: number;        // Wholesale price (proveedor)
-  salePrice: number;        // Retail price (cliente)
+  /** Nombre del proveedor, aunque no esté ligado a /vendors. */
+  supplierName?: string;
+  costPrice: number;        // Precio de compra al proveedor
+  salePrice: number;        // Precio de venta al cliente = costPrice × 1.20 (fijo)
   stock: number;            // Current units in stock
   minStock: number;         // Reorder threshold
   imageUrls?: string[];
   isActive: boolean;
   isFeatured?: boolean;
   tags?: string[];
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+// ============================================================
+// Workshop services — mano de obra del taller
+// Precio de venta fijo: costPrice × 1.20
+// ============================================================
+
+export interface WorkshopService {
+  id: string;
+  code: string;             // SRV-XXXXX o código propio
+  name: string;
+  serviceType: ServiceType;
+  description?: string;
+  costPrice: number;        // Lo que le cuesta al taller
+  salePrice: number;        // Precio al cliente = costPrice × 1.20
+  isActive: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }

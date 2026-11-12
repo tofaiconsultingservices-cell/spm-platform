@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Mistral } from "@mistralai/mistralai";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
+import { customerUnitPrice } from "@/lib/pricing";
 import { createRateLimiter } from "@/lib/rate-limit";
 
 const rateLimiter = createRateLimiter({ limit: 30, windowMs: 60_000 });
@@ -145,18 +146,19 @@ async function buildInventoryContext(db: ReturnType<typeof getAdminDb>, msg: str
   const lowStock = active.filter(p => (p.stock as number) <= (p.minStock as number));
   const outOfStock = active.filter(p => (p.stock as number) === 0);
   const totalCostValue = active.reduce((s, p) => s + (p.stock as number) * (p.costPrice as number), 0);
-  const totalSaleValue = active.reduce((s, p) => s + (p.stock as number) * (p.salePrice as number), 0);
+  const totalSaleValue = active.reduce((s, p) => s + (p.stock as number) * customerUnitPrice({ costPrice: p.costPrice as number, salePrice: p.salePrice as number }), 0);
   const totalUnits = active.reduce((s, p) => s + (p.stock as number), 0);
 
   // Low stock alert list
   const lowStockLines = lowStock.slice(0, 15).map(p =>
-    `  ⚠ ${p.sku} · ${p.name} | Stock: ${p.stock}/${p.minStock} | ${mxn(p.salePrice)}`
+    `  ⚠ ${p.sku} · ${p.name} | Stock: ${p.stock}/${p.minStock} | ${mxn(customerUnitPrice({ costPrice: p.costPrice as number, salePrice: p.salePrice as number }))}`
   ).join("\n");
 
   // Full product list (condensed)
   const allLines = active.slice(0, 50).map(p => {
     const models = Array.isArray(p.compatibleModels) ? (p.compatibleModels as string[]).join("/") : "";
-    return `  • ${p.sku} · ${p.shortName ?? p.name} | Cat: ${p.category} | Stock: ${p.stock} ${p.unit} | Venta: ${mxn(p.salePrice)} | Costo: ${mxn(p.costPrice)}${models ? ` | Modelos: ${models}` : ""}`;
+    const sale = customerUnitPrice({ costPrice: p.costPrice as number, salePrice: p.salePrice as number });
+    return `  • ${p.sku} · ${p.shortName ?? p.name} | Cat: ${p.category} | Stock: ${p.stock} ${p.unit} | Venta: ${mxn(sale)} | Costo: ${mxn(p.costPrice)}${models ? ` | Modelos: ${models}` : ""}`;
   }).join("\n");
 
   // Detail for specific product (PRD-XXXXX)
@@ -168,7 +170,8 @@ async function buildInventoryContext(db: ReturnType<typeof getAdminDb>, msg: str
       productDetail = `\nDETALLE ${pMatch[0].toUpperCase()}:\n${JSON.stringify({
         sku: found.sku, name: found.name, category: found.category,
         unit: found.unit, stock: found.stock, minStock: found.minStock,
-        costPrice: found.costPrice, salePrice: found.salePrice,
+        costPrice: found.costPrice,
+        salePrice: customerUnitPrice({ costPrice: found.costPrice as number, salePrice: found.salePrice as number }),
         compatibleModels: found.compatibleModels, vendorId: found.vendorId,
         isActive: found.isActive, isFeatured: found.isFeatured, tags: found.tags,
         updatedAt: ts(found.updatedAt),

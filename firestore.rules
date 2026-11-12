@@ -100,10 +100,19 @@ service cloud.firestore {
     }
 
     // ── Product Catalog ──────────────────────────────────────────────────────
+    // Sale price is cost × 1.20, enforced in lib/pricing.ts (not here: money
+    // rounding in rules can reject a valid write).
     match /products/{productId} {
       // Anyone (including unauthenticated) can read active products — public marketplace
       allow read: if true;
-      // Managers+ can create and update; Admins can delete (soft-delete via isActive)
+      // Managers+ can create and update; Admins can delete
+      allow create, update: if hasRole('manager');
+      allow delete: if hasRole('admin');
+    }
+
+    // ── Workshop services (mano de obra del taller) ──────────────────────────
+    match /workshop_services/{serviceId} {
+      allow read: if hasRole('operador');
       allow create, update: if hasRole('manager');
       allow delete: if hasRole('admin');
     }

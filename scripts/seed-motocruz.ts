@@ -20,6 +20,7 @@ dotenv.config({ path: path.join(__dirname, "../.env.local") });
 
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
+import { salePriceFromCost } from "../lib/pricing";
 
 // ── Firebase Admin init ──────────────────────────────────────────────────────
 
@@ -52,9 +53,9 @@ interface SeedProduct {
 
 // ── Lógica de precios ─────────────────────────────────────────────────────────
 
-/** Precio de venta sugerido con 40% de margen sobre costo mayorista. */
+/** Precio de venta al cliente: costo del proveedor + 20% fijo. */
 function salePrice(cost: number): number {
-  return Math.round(cost * 1.40 * 100) / 100;
+  return salePriceFromCost(cost);
 }
 
 /** Stock mínimo para alerta de reorden según rango de precio. */

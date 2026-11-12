@@ -3,6 +3,7 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { getSessionUser, hasMinimumRole } from "@/lib/auth-server";
 import { FieldValue } from "firebase-admin/firestore";
 import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
+import { salePriceFromCost } from "@/lib/pricing";
 
 const limiter = createRateLimiter({ limit: 30, windowMs: 60_000 });
 
@@ -33,7 +34,12 @@ export async function GET(req: NextRequest, { params }: Params) {
       unit: data.unit,
       compatibleModels: data.compatibleModels ?? [],
       vendorId: data.vendorId ?? null,
-      salePrice: data.salePrice,
+      salePrice: (() => {
+        const cost = Number(data.costPrice);
+        if (Number.isFinite(cost) && cost >= 0) return salePriceFromCost(cost);
+        const sale = Number(data.salePrice);
+        return Number.isFinite(sale) && sale >= 0 ? sale : 0;
+      })(),
       stock: data.stock,
       minStock: data.minStock,
       imageUrls: data.imageUrls ?? [],
@@ -73,13 +79,22 @@ export async function PUT(req: NextRequest, { params }: Params) {
   // Whitelist of updatable fields — never allow sku, createdAt
   const ALLOWED = [
     "name", "shortName", "category", "unit", "compatibleModels",
-    "vendorId", "vendorSku", "costPrice", "salePrice", "stock",
+    "vendorId", "vendorSku", "supplierName", "costPrice", "stock",
     "minStock", "imageUrls", "isActive", "isFeatured", "tags",
   ] as const;
 
   const updates: Record<string, unknown> = {};
   for (const key of ALLOWED) {
     if (key in body) updates[key] = body[key];
+  }
+
+  if ("costPrice" in updates) {
+    const cost = Number(updates.costPrice);
+    if (!Number.isFinite(cost) || cost < 0) {
+      return NextResponse.json({ error: "Invalid costPrice" }, { status: 400 });
+    }
+    updates.costPrice = cost;
+    updates.salePrice = salePriceFromCost(cost);
   }
 
   if (Object.keys(updates).length === 0) {
@@ -99,7 +114,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 }
 
 // ── DELETE /api/products/[id] ─────────────────────────────────────────────────
-// Soft-delete (isActive = false). Requires admin.
+// Hard delete. Requires admin. Desactivar (isActive) sigue siendo un update.
 export async function DELETE(req: NextRequest, { params }: Params) {
   if (!limiter(getClientIp(req)).success) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -113,10 +128,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { id } = await params;
 
   try {
-    await getAdminDb().collection("products").doc(id).update({
-      isActive: false,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    await getAdminDb().collection("products").doc(id).delete();
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/products/[id]]", err);
