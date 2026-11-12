@@ -16,10 +16,10 @@ const PROMO = {
 };
 
 const PRECIOS = [
-  { rango: "150–250 cc", ejemplos: "Italika, Vento, Pulsar, Gixxer, FZ, scooters", precio: "1,299", antes: "1,690" },
-  { rango: "251–500 cc", ejemplos: "MT-03, Duke 390, Ninja 400, Rebel, Royal Enfield", precio: "1,999", antes: "2,590" },
-  { rango: "501–900 cc", ejemplos: "MT-07, Z650, Z900, CB650R, V-Strom 650", precio: "2,999", antes: "3,890" },
-  { rango: "901 cc o más", ejemplos: "GSX-S1000, S1000RR, Harley-Davidson, BMW GS", precio: "4,499", antes: "5,790" },
+  { rango: "150–200 cc", ejemplos: "Italika, Vento, Pulsar, Gixxer, FZ, scooters", precio: "1,299", antes: "1,690" },
+  { rango: "250–500 cc", ejemplos: "MT-03, Duke 390, Ninja 400, Rebel, Royal Enfield", precio: "1,999", antes: "2,590" },
+  { rango: "500–900 cc", ejemplos: "MT-07, Z650, Z900, CB650R, V-Strom 650", precio: "2,999", antes: "3,890" },
+  { rango: "900 cc o más", ejemplos: "GSX-S1000, S1000RR, Harley-Davidson, BMW GS", precio: "4,499", antes: "5,790" },
 ];
 
 const WHATSAPP_URL =

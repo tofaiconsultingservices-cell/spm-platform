@@ -172,7 +172,7 @@ const translations = {
     footer_privacy: "Privacidad",
     footer_terms: "Términos",
     footer_rights: "Todos los derechos reservados.",
-    footer_zones: "Zonas: San Pedro Garza García, Monterrey, Guadalupe, Apodaca",
+    footer_zones: "Zonas: San Pedro Garza García, Monterrey, Guadalupe, Santa Catarina",
   },
 
   en: {
@@ -339,7 +339,7 @@ const translations = {
     footer_privacy: "Privacy",
     footer_terms: "Terms",
     footer_rights: "All rights reserved.",
-    footer_zones: "Zones: San Pedro Garza García, Monterrey, Guadalupe, Apodaca",
+    footer_zones: "Zones: San Pedro Garza García, Monterrey, Guadalupe, Santa Catarina",
   },
 };
 
