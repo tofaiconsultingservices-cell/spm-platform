@@ -308,7 +308,7 @@ export function generateInvoicePDF(ticket: ServiceTicket): void {
           <div class="brand-sub">Mecánicos certificados a domicilio</div>
           <div class="brand-contact">
             San Pedro Garza García, N.L. · México<br/>
-            spm-platform.vercel.app
+            sanpedromotocare.com
           </div>
         </div>
       </div>

@@ -193,7 +193,7 @@ export async function GET(req: NextRequest) {
             }}
           >
             <span style={{ fontSize: "14px", color: "#93C5FD", fontWeight: 600 }}>
-              🌐 spm-platform.vercel.app
+              🌐 sanpedromotocare.com
             </span>
           </div>
         </div>
