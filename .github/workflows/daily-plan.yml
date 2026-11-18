@@ -1,0 +1,58 @@
+name: Daily plan
+
+# Monday–Saturday 7:45 AM Monterrey (13:45 UTC) opens a "Plan del día" issue
+# with overdue / due-today / P0-P1 / blocked / in-review work. Yesterday's plan is closed.
+on:
+  schedule:
+    - cron: "45 13 * * 1-6"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const today = new Date(Date.now() - 6 * 3600e3).toISOString().slice(0, 10); // Monterrey UTC-6
+            const issues = (await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'open', per_page: 100 }))
+              .filter(i => !i.pull_request && !i.labels.some(l => l.name === 'daily-plan'));
+            const prs = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', per_page: 100 });
+
+            const has = (i, n) => i.labels.some(l => (l.name || l) === n);
+            const prio = i => {
+              const m = (i.body || '').match(/### Priority\s+P(\d)/);
+              const lab = i.labels.map(l => l.name).find(n => /^P\d$/.test(n));
+              return lab ? +lab[1] : m ? +m[1] : 9;
+            };
+            const due = i => ((i.body || '').match(/### Due date \(YYYY-MM-DD\)\s+(\d{4}-\d{2}-\d{2})/) || [])[1];
+            const line = i => `- [ ] #${i.number} ${i.title}${due(i) ? ` — vence ${due(i)}` : ''}${i.assignee ? ` (@${i.assignee.login})` : ''}`;
+            const sect = (t, arr) => arr.length ? `### ${t}\n${arr.map(line).join('\n')}\n` : '';
+
+            const overdue = issues.filter(i => due(i) && due(i) < today);
+            const dueToday = issues.filter(i => due(i) === today);
+            const urgent = issues.filter(i => prio(i) <= 1 && !overdue.includes(i) && !dueToday.includes(i)).sort((a, b) => prio(a) - prio(b));
+            const blocked = issues.filter(i => has(i, 'status:blocked'));
+            const doing = issues.filter(i => has(i, 'status:in-progress'));
+
+            const body = [
+              `## Plan del día — ${today}`,
+              sect('🔴 Vencidas', overdue),
+              sect('📅 Vencen hoy', dueToday),
+              sect('🔥 P0 / P1', urgent),
+              sect('🛠️ En progreso', doing),
+              sect('⛔ Bloqueadas (necesitan respuesta)', blocked),
+              prs.length ? `### 👀 PRs esperando revisión\n${prs.map(p => `- [ ] #${p.number} ${p.title}${p.labels.some(l => l.name === 'needs-owner-review') ? ' ⚠️ owner review' : ''}`).join('\n')}\n` : '',
+              `---\n${issues.length} issues abiertas · Agrega \`agent:claude\` a cualquier issue \`status:ready\` para mandarla al agente.`
+            ].filter(Boolean).join('\n');
+
+            const old = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'open', labels: 'daily-plan' });
+            for (const o of old) await github.rest.issues.update({ owner, repo, issue_number: o.number, state: 'closed' });
+
+            try { await github.rest.issues.createLabel({ owner, repo, name: 'daily-plan', color: '0052cc' }); } catch {}
+            await github.rest.issues.create({ owner, repo, title: `Plan del día ${today}`, body, labels: ['daily-plan'] });

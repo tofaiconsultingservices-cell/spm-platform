@@ -1,0 +1,53 @@
+name: Task (feature / change)
+description: A unit of work for an agent or a person. Write it so someone with no context can finish it.
+title: "[Task] "
+labels: ["type:task", "status:backlog"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Landing, Store / Inventory, Customer portal, CRM, Payments, Voice / WhatsApp, AI assistant, Infra / CI, Docs]
+    validations: { required: true }
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: ["P0 - today", "P1 - this week", "P2 - this month", "P3 - someday"]
+    validations: { required: true }
+  - type: dropdown
+    id: assignee_type
+    attributes:
+      label: Who should do it
+      options: ["Agent (Claude)", "Agent (Copilot / other)", "Human", "Either"]
+    validations: { required: true }
+  - type: input
+    id: due
+    attributes:
+      label: Due date (YYYY-MM-DD)
+      placeholder: "2026-11-25"
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should be true when this is done, and why it matters for the shop.
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable bullets. The agent works to exactly these.
+      value: |
+        - [ ]
+        - [ ] Tests added/updated and `npm test` passes
+    validations: { required: true }
+  - type: textarea
+    id: context
+    attributes:
+      label: Files, links, screenshots
+      description: Paths to start from (see AGENTS.md map), designs, Firestore collections involved.
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: What NOT to touch.
