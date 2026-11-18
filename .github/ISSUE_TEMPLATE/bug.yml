@@ -1,0 +1,39 @@
+name: Bug
+description: Something on sanpedromotocare.com, the CRM or the portal is broken.
+title: "[Bug] "
+labels: ["type:bug", "status:backlog"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Landing, Store / Inventory, Customer portal, CRM, Payments, Voice / WhatsApp, AI assistant, Infra / CI]
+    validations: { required: true }
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: ["P0 - today", "P1 - this week", "P2 - this month", "P3 - someday"]
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens vs. what should happen
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1. Go to …
+        2. Click …
+        3. See …
+    validations: { required: true }
+  - type: input
+    id: where
+    attributes:
+      label: URL / device / browser
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots, console errors, Vercel log lines
