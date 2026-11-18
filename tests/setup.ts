@@ -23,6 +23,9 @@ vi.mock("firebase/firestore", () => ({
   serverTimestamp: vi.fn(() => ({ _type: "serverTimestamp" })),
   query: vi.fn(),
   orderBy: vi.fn(),
+  where: vi.fn(),
+  getDocs: vi.fn(),
+  deleteDoc: vi.fn(),
   Timestamp: {
     now: vi.fn(() => ({ seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 })),
   },

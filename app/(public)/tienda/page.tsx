@@ -7,6 +7,7 @@ import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { useTheme } from "@/contexts/ThemeContext";
 import { subscribeActiveProducts } from "@/lib/firestore/products";
+import { customerUnitPrice } from "@/lib/pricing";
 import type { Product, ProductCategory } from "@/types";
 import { PRODUCT_CATEGORY_LABELS, PRODUCT_UNIT_LABELS } from "@/types";
 import {
@@ -77,7 +78,7 @@ function ProductModal({
 
           {/* Price */}
           <div className={`p-4 rounded-2xl ${isDark ? "bg-slate-800/60" : "bg-slate-50"}`}>
-            <p className={`text-3xl font-display font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{formatMXN(product.salePrice)}</p>
+            <p className={`text-3xl font-display font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{formatMXN(customerUnitPrice(product))}</p>
             <p className={`text-xs mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>precio unitario · IVA incluido</p>
           </div>
 
@@ -152,7 +153,7 @@ function CartDrawer({
   onRemove: (productId: string) => void;
   isDark: boolean;
 }) {
-  const total = items.reduce((s, i) => s + i.product.salePrice * i.qty, 0);
+  const total = items.reduce((s, i) => s + customerUnitPrice(i.product) * i.qty, 0);
 
   if (!open) return null;
 
@@ -188,7 +189,7 @@ function CartDrawer({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-semibold truncate ${isDark ? "text-white" : "text-slate-900"}`}>{product.shortName ?? product.name}</p>
-                  <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{formatMXN(product.salePrice)} c/u</p>
+                  <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{formatMXN(customerUnitPrice(product))} c/u</p>
                   <div className="flex items-center gap-1.5 mt-2">
                     <button onClick={() => onUpdateQty(product.id, qty - 1)}
                       className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold transition-colors ${isDark ? "bg-slate-700 hover:bg-slate-600 text-white" : "bg-gray-200 hover:bg-gray-300 text-slate-700"}`}>−</button>
@@ -201,7 +202,7 @@ function CartDrawer({
                     </button>
                   </div>
                 </div>
-                <p className={`text-sm font-bold flex-shrink-0 ${isDark ? "text-white" : "text-slate-900"}`}>{formatMXN(product.salePrice * qty)}</p>
+                <p className={`text-sm font-bold flex-shrink-0 ${isDark ? "text-white" : "text-slate-900"}`}>{formatMXN(customerUnitPrice(product) * qty)}</p>
               </div>
             ))
           )}
@@ -216,7 +217,7 @@ function CartDrawer({
             </div>
             <a
               href={`https://wa.me/528133880010?text=${encodeURIComponent(
-                `Hola, quiero comprar:\n${items.map(i => `• ${i.qty}x ${i.product.shortName ?? i.product.name} — ${formatMXN(i.product.salePrice * i.qty)}`).join("\n")}\n\nTotal: ${formatMXN(total)}`
+                `Hola, quiero comprar:\n${items.map(i => `• ${i.qty}x ${i.product.shortName ?? i.product.name} — ${formatMXN(customerUnitPrice(i.product) * i.qty)}`).join("\n")}\n\nTotal: ${formatMXN(total)}`
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -274,7 +275,7 @@ export default function TiendaPage() {
     return list;
   }, [products, search, category, modelFilter, featured]);
 
-  const cartTotal = cart.reduce((s, i) => s + i.product.salePrice * i.qty, 0);
+  const cartTotal = cart.reduce((s, i) => s + customerUnitPrice(i.product) * i.qty, 0);
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
 
   function addToCart(product: Product) {
@@ -480,7 +481,7 @@ export default function TiendaPage() {
                   )}
                   <div className="flex items-center justify-between">
                     <p className={`text-base font-display font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
-                      {formatMXN(product.salePrice)}
+                      {formatMXN(customerUnitPrice(product))}
                     </p>
                     <button
                       disabled={product.stock === 0}

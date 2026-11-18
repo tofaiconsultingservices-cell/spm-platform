@@ -5,9 +5,11 @@ import CrmShell from "@/components/crm/CrmShell";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  subscribeProducts, createProduct, updateProduct,
-  subscribeProductMovements,
+  subscribeProducts, createProduct, updateProduct, deleteProduct,
+  subscribeProductMovements, adjustStock,
 } from "@/lib/firestore/products";
+import { customerUnitPrice, profitPerUnit, SALE_MARKUP_PERCENT } from "@/lib/pricing";
+import { FixedPricePreview } from "@/components/crm/FixedPricePreview";
 import { subscribeVendors } from "@/lib/firestore/vendors";
 import { receivePurchaseOrder, subscribePurchaseOrders } from "@/lib/firestore/purchase-orders";
 import type {
@@ -20,7 +22,7 @@ import {
 import {
   Plus, Search, X, Loader2, Package, AlertTriangle, TrendingDown,
   DollarSign, ChevronRight, Edit2, Save, History, ShoppingCart,
-  ArrowDown, ArrowUp, Minus, Check, RefreshCw, Eye,
+  ArrowDown, ArrowUp, Minus, Check, RefreshCw, Eye, Trash2,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -62,42 +64,45 @@ function MovementIcon({ type }: { type: InventoryMovement["type"] }) {
 function CreateProductModal({
   open, onClose, isDark, vendors,
 }: { open: boolean; onClose: () => void; isDark: boolean; vendors: Vendor[] }) {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "", shortName: "", sku: "", category: "motor" as ProductCategory,
-    unit: "PZA" as ProductUnit, costPrice: "", salePrice: "",
-    stock: "0", minStock: "3", vendorId: "", compatibleModels: "",
+    unit: "PZA" as ProductUnit, costPrice: "",
+    stock: "0", minStock: "3", supplierName: "", compatibleModels: "",
     tags: "", isActive: true, isFeatured: false,
   });
 
   useEffect(() => {
     if (!open) setForm({
       name: "", shortName: "", sku: "", category: "motor",
-      unit: "PZA", costPrice: "", salePrice: "",
-      stock: "0", minStock: "3", vendorId: "", compatibleModels: "",
+      unit: "PZA", costPrice: "",
+      stock: "0", minStock: "3", supplierName: "", compatibleModels: "",
       tags: "", isActive: true, isFeatured: false,
     });
   }, [open]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name || !form.costPrice || !form.salePrice) {
-      toast.error("Nombre, costo y precio de venta son requeridos");
+    const cost = Number(form.costPrice);
+    if (!form.name.trim() || !Number.isFinite(cost) || cost < 0) {
+      toast.error("Nombre y precio de compra son requeridos");
       return;
     }
+    const supplierName = form.supplierName.trim();
+    const matched = vendors.find(v => v.name.trim().toLowerCase() === supplierName.toLowerCase());
     setLoading(true);
     try {
       await createProduct({
         name: form.name.trim(),
         shortName: form.shortName.trim() || undefined,
+        sku: form.sku.trim() || undefined,
         category: form.category,
         unit: form.unit,
-        costPrice: Number(form.costPrice),
-        salePrice: Number(form.salePrice),
-        stock: Number(form.stock),
-        minStock: Number(form.minStock),
-        vendorId: form.vendorId || undefined,
+        costPrice: cost,
+        stock: Number(form.stock) || 0,
+        minStock: Number(form.minStock) || 0,
+        vendorId: matched?.id,
+        supplierName: supplierName || undefined,
         compatibleModels: form.compatibleModels.split(",").map(s => s.trim()).filter(Boolean),
         tags: form.tags.split(",").map(s => s.trim()).filter(Boolean),
         isActive: form.isActive,
@@ -162,24 +167,15 @@ function CreateProductModal({
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Costo proveedor *</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">$</span>
-                <input type="number" min="0" step="0.01" className={inp + " pl-6"} placeholder="0.00"
-                  value={form.costPrice} onChange={e => setForm(p => ({ ...p, costPrice: e.target.value }))} />
-              </div>
-            </div>
-            <div>
-              <label className={lbl}>Precio venta *</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">$</span>
-                <input type="number" min="0" step="0.01" className={inp + " pl-6"} placeholder="0.00"
-                  value={form.salePrice} onChange={e => setForm(p => ({ ...p, salePrice: e.target.value }))} />
-              </div>
+          <div>
+            <label className={lbl}>Precio de compra (proveedor) *</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">$</span>
+              <input type="number" min="0" step="0.01" className={inp + " pl-6"} placeholder="0.00"
+                value={form.costPrice} onChange={e => setForm(p => ({ ...p, costPrice: e.target.value }))} />
             </div>
           </div>
+          <FixedPricePreview costInput={form.costPrice} isDark={isDark} />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={lbl}>Stock inicial</label>
@@ -194,11 +190,12 @@ function CreateProductModal({
           </div>
           <div>
             <label className={lbl}>Proveedor</label>
-            <select className={inp} value={form.vendorId}
-              onChange={e => setForm(p => ({ ...p, vendorId: e.target.value }))}>
-              <option value="">Sin proveedor asignado</option>
-              {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-            </select>
+            <input className={inp} list="proveedores-nuevo" placeholder="MotoCruz"
+              value={form.supplierName}
+              onChange={e => setForm(p => ({ ...p, supplierName: e.target.value }))} />
+            <datalist id="proveedores-nuevo">
+              {vendors.map(v => <option key={v.id} value={v.name} />)}
+            </datalist>
           </div>
           <div>
             <label className={lbl}>Modelos compatibles (separados por coma)</label>
@@ -359,45 +356,99 @@ function ReceiveOrderModal({
 function ProductDrawer({
   product, onClose, isDark, vendors,
 }: { product: Product | null; onClose: () => void; isDark: boolean; vendors: Vendor[] }) {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [tab, setTab] = useState<"details" | "history">("details");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ costPrice: "", salePrice: "", minStock: "", isActive: true, isFeatured: false, shortName: "" });
+  const [form, setForm] = useState({
+    name: "", shortName: "", sku: "", category: "otro" as ProductCategory,
+    unit: "PZA" as ProductUnit, costPrice: "", stock: "", minStock: "",
+    supplierName: "", isActive: true, isFeatured: false,
+  });
 
   useEffect(() => {
     if (!product) return;
     setForm({
+      name: product.name,
+      shortName: product.shortName ?? "",
+      sku: product.sku,
+      category: product.category,
+      unit: product.unit,
       costPrice: String(product.costPrice),
-      salePrice: String(product.salePrice),
+      stock: String(product.stock),
       minStock: String(product.minStock),
+      supplierName: product.supplierName ?? vendors.find(v => v.id === product.vendorId)?.name ?? "",
       isActive: product.isActive,
       isFeatured: product.isFeatured ?? false,
-      shortName: product.shortName ?? "",
     });
     setEditing(false);
     setTab("details");
     const unsub = subscribeProductMovements(product.id, setMovements);
     return unsub;
+    // El nombre del proveedor se toma del arreglo ya cargado al abrir el producto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id]);
 
   async function handleSave() {
     if (!product) return;
+    const cost = Number(form.costPrice);
+    const nextStock = Number(form.stock);
+    if (!form.name.trim() || !Number.isFinite(cost) || cost < 0 || !Number.isFinite(nextStock) || nextStock < 0) {
+      toast.error("Nombre, precio de compra y stock son requeridos");
+      return;
+    }
+    const supplierName = form.supplierName.trim();
+    const matched = vendors.find(v => v.name.trim().toLowerCase() === supplierName.toLowerCase());
     setSaving(true);
     try {
       await updateProduct(product.id, {
-        costPrice: Number(form.costPrice),
-        salePrice: Number(form.salePrice),
-        minStock: Number(form.minStock),
+        name: form.name.trim(),
+        shortName: form.shortName.trim() || undefined,
+        sku: form.sku.trim() || product.sku,
+        category: form.category,
+        unit: form.unit,
+        costPrice: cost,
+        minStock: Number(form.minStock) || 0,
+        vendorId: matched?.id ?? "",
+        supplierName: supplierName || undefined,
         isActive: form.isActive,
         isFeatured: form.isFeatured,
-        shortName: form.shortName || undefined,
       });
+      const delta = nextStock - product.stock;
+      if (delta !== 0) {
+        await adjustStock(product.id, delta, {
+          type: delta > 0 ? "ajuste-entrada" : "ajuste-salida",
+          note: "Ajuste manual de inventario",
+          createdBy: user?.uid ?? "crm",
+          unitCost: cost,
+        });
+      }
       toast.success("Producto actualizado");
       setEditing(false);
     } catch { toast.error("Error al guardar"); }
     finally { setSaving(false); }
+  }
+
+  async function handleDelete() {
+    if (!product) return;
+    if (!hasRole("manager")) {
+      toast.error("No tienes permiso para eliminar productos");
+      return;
+    }
+    if (!window.confirm(`¿Eliminar "${product.name}" del inventario?`)) return;
+    try {
+      if (hasRole("admin")) {
+        await deleteProduct(product.id);
+        toast.success("Producto eliminado");
+        onClose();
+      } else {
+        await updateProduct(product.id, { isActive: false });
+        toast.success("Producto desactivado. Solo un admin puede borrarlo por completo.");
+      }
+    } catch {
+      toast.error("No se pudo eliminar");
+    }
   }
 
   if (!product) return null;
@@ -455,9 +506,11 @@ function ProductDrawer({
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Categoría", value: PRODUCT_CATEGORY_LABELS[product.category] },
-                  { label: "Proveedor", value: vendors.find(v => v.id === product.vendorId)?.name ?? "—" },
-                  { label: "Costo", value: formatMXN(product.costPrice) },
-                  { label: "Precio venta", value: formatMXN(product.salePrice) },
+                  { label: "Proveedor", value: product.supplierName || vendors.find(v => v.id === product.vendorId)?.name || "—" },
+                  { label: "Precio de compra", value: formatMXN(product.costPrice) },
+                  { label: "Precio de venta", value: formatMXN(customerUnitPrice(product)) },
+                  { label: "Utilidad / pieza", value: formatMXN(profitPerUnit(Number(product.costPrice) || 0, customerUnitPrice(product))) },
+                  { label: "Stock", value: String(product.stock) },
                 ].map(({ label, value }) => (
                   <div key={label} className={`p-3 rounded-xl ${isDark ? "bg-slate-800/60" : "bg-slate-50"}`}>
                     <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>{label}</p>
@@ -488,20 +541,40 @@ function ProductDrawer({
                 {editing ? (
                   <div className="space-y-3">
                     <div>
-                      <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Nombre corto</label>
-                      <input className={inp + " mt-1"} value={form.shortName}
-                        onChange={e => setForm(p => ({ ...p, shortName: e.target.value }))} />
+                      <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Nombre</label>
+                      <input className={inp + " mt-1"} value={form.name}
+                        onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Nombre corto</label>
+                        <input className={inp + " mt-1"} value={form.shortName}
+                          onChange={e => setForm(p => ({ ...p, shortName: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>SKU</label>
+                        <input className={inp + " mt-1"} value={form.sku}
+                          onChange={e => setForm(p => ({ ...p, sku: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Proveedor</label>
+                      <input className={inp + " mt-1"} list="proveedores-editar" value={form.supplierName}
+                        onChange={e => setForm(p => ({ ...p, supplierName: e.target.value }))} />
+                      <datalist id="proveedores-editar">
+                        {vendors.map(v => <option key={v.id} value={v.name} />)}
+                      </datalist>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Costo $</label>
+                        <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Compra $</label>
                         <input type="number" min="0" step="0.01" className={inp + " mt-1"} value={form.costPrice}
                           onChange={e => setForm(p => ({ ...p, costPrice: e.target.value }))} />
                       </div>
                       <div>
-                        <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Venta $</label>
-                        <input type="number" min="0" step="0.01" className={inp + " mt-1"} value={form.salePrice}
-                          onChange={e => setForm(p => ({ ...p, salePrice: e.target.value }))} />
+                        <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Stock</label>
+                        <input type="number" min="0" className={inp + " mt-1"} value={form.stock}
+                          onChange={e => setForm(p => ({ ...p, stock: e.target.value }))} />
                       </div>
                       <div>
                         <label className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>Mín.</label>
@@ -509,6 +582,7 @@ function ProductDrawer({
                           onChange={e => setForm(p => ({ ...p, minStock: e.target.value }))} />
                       </div>
                     </div>
+                    <FixedPricePreview costInput={form.costPrice} isDark={isDark} />
                     <div className="flex gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" checked={form.isActive}
@@ -526,6 +600,11 @@ function ProductDrawer({
                       {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                       Guardar cambios
                     </button>
+                    <button type="button" onClick={handleDelete}
+                      className="w-full py-2.5 rounded-xl border border-red-500/40 text-red-400 text-sm font-semibold flex items-center justify-center gap-2">
+                      <Trash2 size={14} />
+                      Eliminar producto
+                    </button>
                   </div>
                 ) : (
                   <div className={`p-3 rounded-xl text-xs space-y-1 ${isDark ? "bg-slate-800/40" : "bg-slate-50"}`}>
@@ -538,11 +617,13 @@ function ProductDrawer({
                       <span className={isDark ? "text-slate-300" : "text-slate-700"}>{formatDate(product.updatedAt)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={isDark ? "text-slate-400" : "text-slate-500"}>Margen</span>
+                      <span className={isDark ? "text-slate-400" : "text-slate-500"}>Margen fijo</span>
+                      <span className="text-emerald-400 font-semibold">+{SALE_MARKUP_PERCENT}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={isDark ? "text-slate-400" : "text-slate-500"}>Utilidad</span>
                       <span className="text-emerald-400 font-semibold">
-                        {product.costPrice > 0
-                          ? `${(((product.salePrice - product.costPrice) / product.costPrice) * 100).toFixed(0)}%`
-                          : "—"}
+                        {formatMXN(profitPerUnit(Number(product.costPrice) || 0, customerUnitPrice(product)))}
                       </span>
                     </div>
                   </div>
@@ -597,7 +678,6 @@ const FILTER_TABS: { label: string; value: ProductCategory | "todos" | "bajo-sto
 
 export default function InventarioPage() {
   const { isDark } = useTheme();
-  const { user } = useAuth();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -627,11 +707,13 @@ export default function InventarioPage() {
         p.name.toLowerCase().includes(q) ||
         p.sku.toLowerCase().includes(q) ||
         (p.shortName ?? "").toLowerCase().includes(q) ||
+        (p.supplierName ?? "").toLowerCase().includes(q) ||
+        vendors.some(v => v.id === p.vendorId && v.name.toLowerCase().includes(q)) ||
         p.compatibleModels.some(m => m.toLowerCase().includes(q))
       );
     }
     return list;
-  }, [products, filter, search]);
+  }, [products, filter, search, vendors]);
 
   const stats = useMemo(() => ({
     total: products.length,
@@ -639,13 +721,13 @@ export default function InventarioPage() {
     lowStock: products.filter(p => p.stock <= p.minStock && p.isActive).length,
     outOfStock: products.filter(p => p.stock === 0 && p.isActive).length,
     totalValue: products.reduce((acc, p) => acc + p.stock * p.costPrice, 0),
-    totalRetail: products.reduce((acc, p) => acc + p.stock * p.salePrice, 0),
+    totalRetail: products.reduce((acc, p) => acc + p.stock * customerUnitPrice(p), 0),
   }), [products]);
 
   const cardCls = `p-4 rounded-2xl border ${isDark ? "bg-slate-900 border-white/5" : "bg-white border-gray-100 shadow-sm"}`;
 
   return (
-    <CrmShell title="Inventario" subtitle="Catálogo de productos y control de stock">
+    <CrmShell title="Inventario" subtitle={`Productos de proveedores · venta = compra + ${SALE_MARKUP_PERCENT}%`}>
       <Toaster position="top-right" />
 
       {/* Stats */}
@@ -747,10 +829,9 @@ export default function InventarioPage() {
       ) : (
         <div className="space-y-2">
           {filtered.map(product => {
-            const vendor = vendors.find(v => v.id === product.vendorId);
-            const margin = product.costPrice > 0
-              ? (((product.salePrice - product.costPrice) / product.costPrice) * 100).toFixed(0)
-              : null;
+            const supplier = product.supplierName || vendors.find(v => v.id === product.vendorId)?.name;
+            const sale = customerUnitPrice(product);
+            const profit = profitPerUnit(Number(product.costPrice) || 0, sale);
             return (
               <button
                 key={product.id}
@@ -782,12 +863,14 @@ export default function InventarioPage() {
                       <span className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                         {PRODUCT_CATEGORY_LABELS[product.category]}
                       </span>
-                      {vendor && (
-                        <span className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>· {vendor.name}</span>
+                      {supplier && (
+                        <span className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>· {supplier}</span>
                       )}
-                      <span className={`text-xs font-semibold ml-auto ${isDark ? "text-slate-300" : "text-slate-700"}`}>
-                        {formatMXN(product.salePrice)}
-                        {margin && <span className="text-emerald-400 ml-1.5">+{margin}%</span>}
+                      <span className={`text-xs ml-auto text-right ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                        <span className="font-semibold">{formatMXN(sale)}</span>
+                        <span className={`block ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                          compra {formatMXN(product.costPrice)} · utilidad {formatMXN(profit)}
+                        </span>
                       </span>
                     </div>
                     {product.compatibleModels.length > 0 && (

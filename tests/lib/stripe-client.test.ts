@@ -4,12 +4,20 @@ const mockCreate = vi.fn();
 const mockConstructEvent = vi.fn();
 
 vi.mock("stripe", () => {
+  class StripeError extends Error {}
   function MockStripe() {
     return {
       checkout: { sessions: { create: mockCreate } },
       webhooks: { constructEvent: mockConstructEvent },
     };
   }
+  MockStripe.errors = {
+    StripeCardError: StripeError,
+    StripeInvalidRequestError: StripeError,
+    StripeAPIError: StripeError,
+    StripeConnectionError: StripeError,
+    StripeRateLimitError: StripeError,
+  };
   MockStripe.default = MockStripe;
   return { default: MockStripe };
 });
