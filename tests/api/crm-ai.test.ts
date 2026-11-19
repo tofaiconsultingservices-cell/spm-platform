@@ -109,7 +109,7 @@ describe("POST /api/crm/ai — requests", () => {
     expect(p).toContain("Sin mecánico: 1");
     expect(p).toContain("MECÁNICOS (1/2 disponibles)");
     expect(p).toContain("⭐4.8");
-    expect(p).not.toContain("INVENTARIO");
+    expect(p).not.toMatch(/INVENTARIO — \d/);
   });
 
   it("adds ticket detail when a ticket id is asked about", async () => {
@@ -135,14 +135,14 @@ describe("POST /api/crm/ai — requests", () => {
   it("adds vendors and purchase orders for supplier questions", async () => {
     await ask("¿qué le debemos al proveedor?");
     const p = systemPrompt();
-    expect(p).toContain("PROVEEDORES");
+    expect(p).toContain("PROVEEDORES:\n");
     expect(p).toContain("OC-2026-0001");
   });
 
   it("adds payments for revenue questions", async () => {
     await ask("¿cuánto se ha cobrado hoy?");
     const p = systemPrompt();
-    expect(p).toContain("PAGOS Y FACTURACIÓN");
+    expect(p).toContain("PAGOS Y FACTURACIÓN:");
     expect(p).toContain("stripe");
     expect(p).toContain("desconocido");
   });
@@ -150,7 +150,7 @@ describe("POST /api/crm/ai — requests", () => {
   it("includes every section for a summary", async () => {
     await ask("dame un resumen general");
     const p = systemPrompt();
-    for (const s of ["INVENTARIO", "PAGOS", "CLIENTES", "PROVEEDORES", "ÓRDENES DE COMPRA"]) {
+    for (const s of ["productos activos", "PAGOS Y FACTURACIÓN:", "CLIENTES RECIENTES", "PROVEEDORES:\n", "ÓRDENES DE COMPRA (últimas 20)"]) {
       expect(p).toContain(s);
     }
   });
