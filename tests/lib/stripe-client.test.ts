@@ -4,6 +4,15 @@ const mockCreate = vi.fn();
 const mockConstructEvent = vi.fn();
 
 vi.mock("stripe", () => {
+  class StripeError extends Error {}
+  const errors = {
+    StripeError,
+    StripeCardError: class extends StripeError {},
+    StripeInvalidRequestError: class extends StripeError {},
+    StripeAPIError: class extends StripeError {},
+    StripeConnectionError: class extends StripeError {},
+    StripeRateLimitError: class extends StripeError {},
+  };
   function MockStripe() {
     return {
       checkout: { sessions: { create: mockCreate } },
@@ -11,6 +20,7 @@ vi.mock("stripe", () => {
     };
   }
   MockStripe.default = MockStripe;
+  MockStripe.errors = errors;
   return { default: MockStripe };
 });
 
