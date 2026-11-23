@@ -10,11 +10,15 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
-  const { signIn, signInWithGoogle, user, loading, redirectError } = useAuth();
+  const { signIn, signInWithGoogle, signUp, user, loading, redirectError } = useAuth();
   const { t } = useLanguage();
   const { isDark } = useTheme();
   const router = useRouter();
 
+  const [mode, setMode] = useState<"login" | "registro">("login");
+  const [fromPath, setFromPath] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -36,14 +40,23 @@ export default function LoginPage() {
     }
   }, [redirectError]);
 
+  // ?modo=registro abre directo "Crear cuenta"; ?from=/portal/... regresa ahí al entrar
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("modo") === "registro") setMode("registro");
+    const from = params.get("from");
+    if (from && from.startsWith("/portal")) setFromPath(from);
+  }, []);
+
   // Redirect once auth resolves
   useEffect(() => {
     if (!loading && user) {
       if (user.role === "mecanico") router.replace("/mecanico");
-      else if (user.role === "viewer") router.replace("/portal");
+      // Después de crear cuenta: registrar su vehículo (o regresar a donde venía)
+      else if (user.role === "viewer") router.replace(fromPath ?? (mode === "registro" ? "/portal/moto?nuevo=1" : "/portal"));
       else router.replace("/crm/dashboard");
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, fromPath, mode]);
 
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -53,6 +66,27 @@ export default function LoginPage() {
       await signIn(email, password);
     } catch {
       setError("Correo o contraseña incorrectos.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await signUp(name, email, password, phone);
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code ?? "";
+      if (code === "auth/email-already-in-use") setError("Ya existe una cuenta con este correo. Inicia sesión.");
+      else if (code === "auth/invalid-email") setError("El correo no es válido.");
+      else if (code === "auth/weak-password") setError("La contraseña es muy débil. Usa al menos 6 caracteres.");
+      else setError("No pudimos crear tu cuenta. Intenta de nuevo.");
     } finally {
       setSubmitting(false);
     }
@@ -160,11 +194,31 @@ export default function LoginPage() {
           </div>
 
           <h2 className={`font-display font-bold text-2xl lg:text-3xl mb-1 ${isDark ? "text-white" : "text-slate-900"}`}>
-            {t("login_title")}
+            {mode === "registro" ? "Crea tu cuenta" : t("login_title")}
           </h2>
-          <p className={`text-sm mb-8 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-            {t("login_subtitle")}
+          <p className={`text-sm mb-6 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+            {mode === "registro"
+              ? "Con tu cuenta armas tu membresía de mantenimiento y sigues tus servicios."
+              : t("login_subtitle")}
           </p>
+
+          {/* Tabs: iniciar sesión / crear cuenta */}
+          <div className={`grid grid-cols-2 gap-1 p-1 rounded-xl mb-6 ${isDark ? "bg-white/5" : "bg-slate-100"}`}>
+            {(["login", "registro"] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setMode(m); setError(""); }}
+                className={`py-2 rounded-lg text-sm font-semibold transition-all ${
+                  mode === m
+                    ? "bg-[var(--color-spm-red)] text-white"
+                    : isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                {m === "login" ? "Iniciar sesión" : "Crear cuenta"}
+              </button>
+            ))}
+          </div>
 
           {/* Google Button */}
           <button
@@ -192,7 +246,40 @@ export default function LoginPage() {
           </div>
 
           {/* Email Form */}
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          <form onSubmit={mode === "registro" ? handleRegister : handleEmailLogin} className="space-y-4">
+            {mode === "registro" && (
+              <>
+                <div>
+                  <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    Nombre completo
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Tu nombre"
+                    autoComplete="name"
+                    required
+                    maxLength={80}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    WhatsApp / teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="81 1234 5678"
+                    autoComplete="tel"
+                    maxLength={20}
+                    className={inputClass}
+                  />
+                </div>
+              </>
+            )}
             <div>
               <label className={`block text-xs font-semibold uppercase tracking-wide mb-1.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                 {t("login_email")}
@@ -201,7 +288,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@spm.mx"
+                placeholder={mode === "registro" ? "tucorreo@gmail.com" : "admin@spm.mx"}
                 autoComplete="email"
                 required
                 className={inputClass}
@@ -218,7 +305,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  autoComplete="current-password"
+                  autoComplete={mode === "registro" ? "new-password" : "current-password"}
                   required
                   className={`${inputClass} pr-12`}
                 />
@@ -242,7 +329,7 @@ export default function LoginPage() {
               className="w-full py-3.5 bg-[var(--color-spm-red)] hover:bg-[var(--color-spm-red-dark)] text-white font-bold text-sm rounded-xl transition-all hover:scale-[1.01] disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-red-900/20"
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
-              {t("login_btn")}
+              {mode === "registro" ? "Crear cuenta" : t("login_btn")}
             </button>
           </form>
 

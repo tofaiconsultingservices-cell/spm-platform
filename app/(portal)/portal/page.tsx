@@ -13,7 +13,7 @@ import { STATUS_LABELS, STATUS_COLORS } from "@/types";
 import {
   Bike, FileText, CreditCard, User, LogOut, Plus,
   Search, Clock, CheckCircle2, AlertCircle, Loader2, Home,
-  ExternalLink,
+  ExternalLink, BadgeCheck,
 } from "lucide-react";
 import NotificationPermission from "@/components/portal/NotificationPermission";
 
@@ -123,12 +123,13 @@ export default function PortalPage() {
         <NotificationPermission />
 
         {/* Quick Nav Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           {[
             { href: "/portal/servicios", label: t("portal_services"), icon: Bike, color: "from-red-600 to-red-700" },
             { href: "/portal/pagar", label: t("portal_payments"), icon: CreditCard, color: "from-green-600 to-green-700" },
             { href: "/portal/moto", label: t("portal_moto"), icon: FileText, color: "from-blue-600 to-blue-700" },
             { href: "/portal/perfil", label: t("portal_profile"), icon: User, color: "from-purple-600 to-purple-700" },
+            { href: "/portal/membresias", label: "Mi membresía", icon: BadgeCheck, color: "from-emerald-600 to-teal-700" },
           ].map(({ href, label, icon: Icon, color }) => (
             <Link
               key={href}
