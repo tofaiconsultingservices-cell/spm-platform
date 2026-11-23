@@ -1,12 +1,21 @@
 import {
-  collection, addDoc, onSnapshot, query, where, serverTimestamp, type Unsubscribe, type Timestamp,
+  collection, addDoc, onSnapshot, query, where, serverTimestamp, updateDoc, doc, type Unsubscribe, type Timestamp,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import type { BuilderState, MembershipQuote } from "@/lib/memberships/config";
 
 const COL = "memberships";
 
-export type MembershipStatus = "pendiente" | "activa" | "cancelada";
+/**
+ * pendiente  → solicitada por el cliente, en revisión
+ * por_pagar  → el staff confirmó el precio; el cliente ya puede pagar
+ * activa     → al corriente
+ * atrasada   → falló un cobro con tarjeta o venció un pago OXXO
+ * finalizada → completó sus 12 meses
+ * cancelada  → cancelada por el staff
+ */
+export type MembershipStatus = "pendiente" | "por_pagar" | "activa" | "atrasada" | "finalizada" | "cancelada";
+export type MembershipPayMethod = "card" | "oxxo";
 
 export interface Membership {
   id: string;
@@ -14,6 +23,7 @@ export interface Membership {
   motorcycleId: string;
   clientEmail: string;
   clientName: string;
+  clientPhone?: string;
   status: MembershipStatus;
   termMonths: 12;
   vehicle: { type: string; typeName: string; range: string; model: string; usage: string };
@@ -24,10 +34,46 @@ export interface Membership {
   paymentAmount: number;   // por semana o por mes, según billing
   totalYear: number;
   createdAt?: Timestamp;
+  // Lo llena el staff al revisar
+  confirmedAmount?: number;
+  confirmedAt?: Timestamp;
+  // Lo llena el webhook de Stripe
+  paymentMethod?: MembershipPayMethod;
+  paymentsMade?: number;
+  nextPaymentAt?: Timestamp | null;
+  lastPaymentAt?: Timestamp;
+  payments?: { id: string; amount: number; method: MembershipPayMethod; paidAt: Timestamp }[];
+  stripeSubscriptionId?: string;
+  oxxoVoucherUrl?: string | null;
+  oxxoPendingUntil?: Timestamp;
+}
+
+export const totalPaymentsFor = (billing: BuilderState["billing"]) => (billing === "weekly" ? 52 : 12);
+
+/** Membresías de todos los clientes (CRM, operador o superior). */
+export function subscribeAllMemberships(cb: (m: Membership[]) => void): Unsubscribe {
+  return onSnapshot(collection(getDb(), COL), snap => {
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Membership);
+    list.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+    cb(list);
+  });
+}
+
+/** El staff confirma el precio por periodo y habilita el pago. */
+export async function confirmMembership(id: string, amount: number, billing: BuilderState["billing"], byUid: string) {
+  await updateDoc(doc(getDb(), COL, id), {
+    status: "por_pagar",
+    confirmedAmount: amount,
+    paymentAmount: amount,
+    totalYear: amount * totalPaymentsFor(billing),
+    confirmedAt: serverTimestamp(),
+    confirmedBy: byUid,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function createMembership(
-  data: Omit<Membership, "id" | "createdAt" | "status">
+  data: Pick<Membership, "uid" | "motorcycleId" | "clientEmail" | "clientName" | "clientPhone" | "termMonths" | "vehicle" | "selection" | "services" | "perks" | "billing" | "paymentAmount" | "totalYear">
 ): Promise<string> {
   const ref = await addDoc(collection(getDb(), COL), {
     ...data,
