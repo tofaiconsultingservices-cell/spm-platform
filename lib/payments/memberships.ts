@@ -20,17 +20,18 @@ import { FieldValue } from "firebase-admin/firestore";
 import { sendWhatsApp } from "@/lib/notifications/whatsapp";
 
 export const MEMBERSHIPS = "memberships";
-export type MembershipBilling = "weekly" | "monthly";
+export type MembershipBilling = "weekly" | "monthly" | "annual";
 export type MembershipPayMethod = "card" | "oxxo";
 
 /** OXXO acepta como máximo $10,000 MXN por ficha. */
 export const OXXO_MAX_MXN = 10_000;
 
-export const totalPayments = (billing: MembershipBilling) => (billing === "weekly" ? 52 : 12);
+export const totalPayments = (billing: MembershipBilling) => (billing === "weekly" ? 52 : billing === "annual" ? 1 : 12);
 
 export function addPeriod(date: Date, billing: MembershipBilling): Date {
   const d = new Date(date);
   if (billing === "weekly") d.setDate(d.getDate() + 7);
+  else if (billing === "annual") d.setMonth(d.getMonth() + 12);
   else d.setMonth(d.getMonth() + 1);
   return d;
 }
@@ -76,7 +77,8 @@ export async function createMembershipCheckout(opts: {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sanpedromotocare.com";
-  const period = m.billing === "weekly" ? "semanal" : "mensual";
+  const period = m.billing === "weekly" ? "semanal" : m.billing === "annual" ? "anual" : "mensual";
+  const oneTime = m.billing === "annual";
   const name = `Membresía ${period} SPM — ${m.vehicle?.typeName ?? "Vehículo"} ${m.vehicle?.range ?? ""}`.trim();
   const description = m.vehicle?.model || undefined;
   const folio = membershipId.slice(0, 6).toUpperCase();
@@ -87,7 +89,30 @@ export async function createMembershipCheckout(opts: {
     : opts.customerEmail ? { customer_email: opts.customerEmail } : {};
 
   let session: Stripe.Checkout.Session;
-  if (method === "card") {
+  if (method === "card" && oneTime) {
+    // Pago anual por adelantado: un solo cobro con tarjeta
+    session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [{
+        price_data: {
+          currency: "mxn",
+          product_data: { name, ...(description ? { description } : {}) },
+          unit_amount: Math.round(amount * 100),
+        },
+        quantity: 1,
+      }],
+      ...(opts.customerEmail ? { customer_email: opts.customerEmail } : {}),
+      metadata,
+      payment_intent_data: {
+        description: `SPM membresía ${folio} — pago anual`,
+        statement_descriptor_suffix: "SPMOTOCARE",
+        metadata,
+      },
+      success_url: `${appUrl}/portal/membresias?pago=ok`,
+      cancel_url: `${appUrl}/portal/membresias?pago=cancelado`,
+    }, { idempotencyKey: `membership_annual_${membershipId}_${Math.floor(Date.now() / 600_000)}` });
+  } else if (method === "card") {
     session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -192,14 +217,16 @@ export async function recordMembershipPayment(
     // OXXO puede pagarse por adelantado: el siguiente vencimiento se recorre desde el último
     const prevDue = m.nextPaymentAt?.toDate();
     const base = p.method === "oxxo" && prevDue && prevDue > now ? prevDue : now;
-    const finished = made >= total;
+    const annual = m.billing === "annual";
+    const finished = !annual && made >= total;
 
     tx.update(ref, {
       status: finished ? "finalizada" : "activa",
       paymentMethod: p.method,
       paymentsMade: made,
       lastPaymentAt: FieldValue.serverTimestamp(),
-      nextPaymentAt: finished ? null : addPeriod(base, m.billing),
+      nextPaymentAt: finished || annual ? null : addPeriod(base, m.billing),
+      ...(annual ? { termEndsAt: termEnd(now, "annual") } : {}),
       payments: FieldValue.arrayUnion({ id: p.id, amount: p.amount, method: p.method, paidAt: now }),
       ...(m.paymentsMade ? {} : { activatedAt: FieldValue.serverTimestamp() }),
       ...(p.method === "oxxo" ? { oxxoVoucherUrl: FieldValue.delete(), oxxoPendingUntil: FieldValue.delete() } : {}),
@@ -269,9 +296,11 @@ export async function handleMembershipEvent(event: Stripe.Event): Promise<boolea
         return true;
       }
 
+      const payMethod: MembershipPayMethod = s.metadata.method === "card" ? "card" : "oxxo";
+
       if (event.type === "checkout.session.completed" && s.mode === "payment") {
         if (s.payment_status === "paid") {
-          await recordMembershipPayment(membershipId, { id: s.id, amount, method: "oxxo" });
+          await recordMembershipPayment(membershipId, { id: s.id, amount, method: payMethod });
           return true;
         }
         // Ficha OXXO generada: guardar el link para que el cliente la vuelva a ver
@@ -294,7 +323,7 @@ export async function handleMembershipEvent(event: Stripe.Event): Promise<boolea
       }
 
       if (event.type === "checkout.session.async_payment_succeeded") {
-        await recordMembershipPayment(membershipId, { id: s.id, amount, method: "oxxo" });
+        await recordMembershipPayment(membershipId, { id: s.id, amount, method: payMethod });
         return true;
       }
 

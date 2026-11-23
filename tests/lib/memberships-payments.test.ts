@@ -12,9 +12,10 @@ import {
 const ev = (type: string, object: unknown) => ({ id: "evt_1", type, data: { object } }) as unknown as Stripe.Event;
 
 describe("membership payment periods", () => {
-  it("counts 52 weekly or 12 monthly payments", () => {
+  it("counts 52 weekly, 12 monthly or 1 annual payment", () => {
     expect(totalPayments("weekly")).toBe(52);
     expect(totalPayments("monthly")).toBe(12);
+    expect(totalPayments("annual")).toBe(1);
   });
 
   it("adds one week or one month", () => {
@@ -86,5 +87,26 @@ describe("handleMembershipEvent", () => {
     await recordMembershipPayment("m1", { id: "in_12", amount: 900, method: "card" });
     expect(txUpdate.mock.calls[0][1].status).toBe("finalizada");
     expect(txUpdate.mock.calls[0][1].nextPaymentAt).toBeNull();
+  });
+
+  it("keeps an annual membership active after its single payment", async () => {
+    docData.billing = "annual";
+    await recordMembershipPayment("m1", { id: "cs_1", amount: 9000, method: "card" });
+    const update = txUpdate.mock.calls[0][1];
+    expect(update.status).toBe("activa");
+    expect(update.paymentsMade).toBe(1);
+    expect(update.nextPaymentAt).toBeNull();
+    expect(update.termEndsAt).toBeInstanceOf(Date);
+  });
+
+  it("records an annual card checkout paid in one step", async () => {
+    docData.billing = "annual";
+    const handled = await handleMembershipEvent(ev("checkout.session.completed", {
+      id: "cs_2", mode: "payment", payment_status: "paid", amount_total: 900000,
+      metadata: { type: "membership", membershipId: "m1", method: "card" },
+    }));
+    expect(handled).toBe(true);
+    expect(txUpdate.mock.calls[0][1].paymentMethod).toBe("card");
+    expect(txUpdate.mock.calls[0][1].status).toBe("activa");
   });
 });

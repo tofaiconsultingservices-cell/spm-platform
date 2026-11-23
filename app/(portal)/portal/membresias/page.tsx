@@ -8,7 +8,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import {
   VEHICLE_TYPES, USAGES, SERVICES, MEMBERSHIP_CONFIG,
   getType, getRange, serviceName, unitPrice, defaultFreq, recommendedFreq, rangeIndexForCc,
-  availablePerks, perkPrice, calcMembership, fmtMXN,
+  availablePerks, perkPrice, calcMembership, fmtMXN, billingView, periodName,
   type BuilderState, type ServiceId, type PerkId, type VehicleTypeId, type UsageId, type MembershipQuote,
 } from "@/lib/memberships/config";
 import { createMembership, subscribeMyMemberships, totalPaymentsFor, type Membership } from "@/lib/firestore/memberships";
@@ -25,7 +25,7 @@ const INITIAL: BuilderState = {
 
 function summaryText(s: BuilderState, q: MembershipQuote, name: string, id?: string): string {
   const t = getType(s.type);
-  const w = s.billing === "weekly";
+  const bv = billingView(q, s.billing);
   const out = [
     `Hola San Pedro Moto Care, solicité mi membresía${id ? ` (folio ${id.slice(0, 6).toUpperCase()})` : ""}:`,
     `• Cliente: ${name}`,
@@ -37,8 +37,8 @@ function summaryText(s: BuilderState, q: MembershipQuote, name: string, id?: str
     ...q.lines.map(l => `   - ${l.name} ×${l.n}`),
   ];
   if (q.perks.length) out.push(`• Beneficios: ${q.perks.map(p => p.name).join(", ")}`);
-  out.push(`• Pago: ${w ? `semanal, ${fmtMXN(q.weekly)} por semana (52 pagos)` : `mensual, ${fmtMXN(q.monthly)} por mes (12 pagos)`}`);
-  out.push(`• Total 12 meses: ${fmtMXN(w ? q.yearWeekly : q.year)}`);
+  out.push(`• Pago: ${bv.label}, ${fmtMXN(bv.pay)} por ${bv.per}${bv.count > 1 ? ` (${bv.count} pagos)` : " (pago único)"}`);
+  out.push(`• Total 12 meses: ${fmtMXN(bv.total)}`);
   return out.join("\n");
 }
 
@@ -130,8 +130,9 @@ export default function MembresiasPage() {
   }
 
   const t = getType(s.type);
+  const bv = billingView(q, s.billing);
   const w = s.billing === "weekly";
-  const pay = w ? q.weekly : q.monthly;
+  const pay = bv.pay;
 
   const card = `rounded-2xl border ${isDark ? "bg-slate-900 border-white/5" : "bg-white border-gray-100 shadow-sm"}`;
   const muted = isDark ? "text-slate-400" : "text-slate-500";
@@ -172,7 +173,7 @@ export default function MembresiasPage() {
         perks: q.perks.map(p => ({ id: p.id, name: p.name, monthly: p.price })),
         billing: s.billing,
         paymentAmount: Math.round(pay),
-        totalYear: Math.round(w ? q.yearWeekly : q.year),
+        totalYear: Math.round(bv.total),
       });
       setSavedId(id);
     } catch (err) {
@@ -392,12 +393,16 @@ export default function MembresiasPage() {
               </div>
 
               <Step n={8} title="¿Cómo quieres pagar?" hint="Plazo de 12 meses." />
-              <div className="grid sm:grid-cols-2 gap-2">
+              <div className="grid sm:grid-cols-3 gap-2">
+                <button onClick={() => setS(p => ({ ...p, billing: "annual" }))} className={opt(s.billing === "annual")}>
+                  Anual por adelantado
+                  <span className="block text-xs font-medium opacity-80">1 pago · −{Math.round(MEMBERSHIP_CONFIG.annualOff * 100)}% · ahorras {fmtMXN(q.year - q.annual)}</span>
+                </button>
                 <button onClick={() => setS(p => ({ ...p, billing: "weekly" }))} className={opt(w)}>
                   Semanal On the Go
-                  <span className="block text-xs font-medium opacity-80">52 pagos · −{Math.round(MEMBERSHIP_CONFIG.weeklyOff * 100)}% · ahorras {fmtMXN(q.year - q.yearWeekly)} al año</span>
+                  <span className="block text-xs font-medium opacity-80">52 pagos · −{Math.round(MEMBERSHIP_CONFIG.weeklyOff * 100)}% · ahorras {fmtMXN(q.year - q.yearWeekly)}</span>
                 </button>
-                <button onClick={() => setS(p => ({ ...p, billing: "monthly" }))} className={opt(!w)}>
+                <button onClick={() => setS(p => ({ ...p, billing: "monthly" }))} className={opt(s.billing === "monthly")}>
                   Mensual<span className="block text-xs font-medium opacity-80">12 pagos</span>
                 </button>
               </div>
@@ -408,10 +413,12 @@ export default function MembresiasPage() {
               <h3 className={`font-display font-bold ${strong}`}>Tu membresía</h3>
               <p className={`text-sm mb-3 ${muted}`}>{t.icon} {t.name} · {getRange(s).label}{s.model ? ` · ${s.model}` : ""}</p>
               <div className={`font-display font-extrabold text-4xl ${strong}`}>
-                {fmtMXN(pay)} <span className={`text-sm font-medium ${muted}`}>/{w ? "semana" : "mes"}</span>
+                {fmtMXN(pay)} <span className={`text-sm font-medium ${muted}`}>/{bv.per}</span>
               </div>
               <p className={`text-sm mt-1 mb-4 ${muted}`}>
-                {w ? `Equivale a ${fmtMXN(q.yearWeekly / 12)} al mes · 52 pagos` : `12 pagos · semanal quedaría en ${fmtMXN(q.weekly)}/semana`}
+                {s.billing === "annual"
+                  ? `Pago único por 12 meses · equivale a ${fmtMXN(q.annual / 12)} al mes`
+                  : w ? `Equivale a ${fmtMXN(q.yearWeekly / 12)} al mes · 52 pagos` : `12 pagos · anual por adelantado quedaría en ${fmtMXN(q.annual)}`}
               </p>
 
               {q.lines.length ? (
@@ -428,9 +435,10 @@ export default function MembresiasPage() {
                 {q.memberSave > 0 && <Row label="Ahorro de membresía" value={`−${fmtMXN(q.memberSave)}`} green />}
                 {q.perksYr > 0 && <Row label="Beneficios (12 meses)" value={`+${fmtMXN(q.perksYr)}`} />}
                 {q.fleetSave > 0 && <Row label={`Flotilla −${q.fleetOff * 100}%`} value={`−${fmtMXN(q.fleetSave)}`} green />}
-                {w && q.year > 0 && <Row label="Pago semanal −8%" value={`−${fmtMXN(q.year - q.yearWeekly)}`} green />}
+                {w && q.year > 0 && <Row label={`Pago semanal −${Math.round(MEMBERSHIP_CONFIG.weeklyOff * 100)}%`} value={`−${fmtMXN(q.year - q.yearWeekly)}`} green />}
+                {s.billing === "annual" && q.year > 0 && <Row label={`Pago anual −${Math.round(MEMBERSHIP_CONFIG.annualOff * 100)}%`} value={`−${fmtMXN(q.year - q.annual)}`} green />}
                 <div className={`flex justify-between pt-2 mt-1 border-t font-bold ${strong} ${isDark ? "border-white/10" : "border-gray-200"}`}>
-                  <span>Total 12 meses</span><span>{fmtMXN(w ? q.yearWeekly : q.year)}</span>
+                  <span>Total 12 meses</span><span>{fmtMXN(bv.total)}</span>
                 </div>
               </div>
 
@@ -450,7 +458,7 @@ export default function MembresiasPage() {
       {/* Barra fija en móvil */}
       {building && !savedId && (
         <div className={`lg:hidden fixed bottom-0 inset-x-0 z-30 border-t px-4 py-3 flex items-center justify-between gap-3 ${isDark ? "bg-slate-950/95 border-white/10" : "bg-white/95 border-gray-200"}`}>
-          <div className={`font-display font-extrabold text-xl ${strong}`}>{fmtMXN(pay)} <span className={`text-xs font-medium ${muted}`}>/{w ? "sem" : "mes"}</span></div>
+          <div className={`font-display font-extrabold text-xl ${strong}`}>{fmtMXN(pay)} <span className={`text-xs font-medium ${muted}`}>/{bv.perShort}</span></div>
           <button onClick={handleSubmit} disabled={saving || !q.lines.length}
             className="px-5 py-3 bg-[var(--color-spm-red)] text-white font-semibold rounded-xl text-sm disabled:opacity-50">
             Solicitar
@@ -479,7 +487,9 @@ function MembershipStatusCard({ m }: { m: Membership }) {
 
   const strong = isDark ? "text-white" : "text-slate-900";
   const muted = isDark ? "text-slate-400" : "text-slate-500";
-  const period = m.billing === "weekly" ? "semana" : "mes";
+  const period = periodName(m.billing);
+  const isAnnual = m.billing === "annual";
+  const termEnds = m.termEndsAt?.toDate?.();
   const total = totalPaymentsFor(m.billing);
   const made = m.paymentsMade ?? 0;
   const amount = m.confirmedAmount ?? m.paymentAmount;
@@ -527,7 +537,10 @@ function MembershipStatusCard({ m }: { m: Membership }) {
   const btn = "px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-60";
   const primary = `${btn} bg-[var(--color-spm-red)] hover:bg-[var(--color-spm-red-dark)] text-white`;
   const secondary = `${btn} border ${isDark ? "border-white/15 text-slate-200 hover:border-[var(--color-spm-red-light)]" : "border-gray-300 text-slate-700 hover:border-[var(--color-spm-red-light)]"}`;
-  const oxxoBtn = (
+  const oxxoAllowed = amount <= 10_000;
+  const oxxoBtn = !oxxoAllowed ? (
+    <span className={`text-xs ${muted}`}>OXXO acepta hasta $10,000 por ficha; para este monto usa tarjeta.</span>
+  ) : (
     <button onClick={() => pay("oxxo")} disabled={!!paying} className={secondary}>
       {paying === "oxxo" ? <Loader2 size={15} className="animate-spin" /> : <Store size={15} />} Pagar en OXXO
     </button>
@@ -554,7 +567,13 @@ function MembershipStatusCard({ m }: { m: Membership }) {
         </div>
       </div>
 
-      {(m.status === "activa" || m.status === "atrasada" || m.status === "finalizada") && (
+      {isAnnual && (m.status === "activa" || m.status === "finalizada") && (
+        <p className={`mt-4 text-sm ${strong}`}>
+          ✅ Pagada por adelantado{termEnds ? ` · vigente hasta el ${termEnds.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}` : ""}
+        </p>
+      )}
+
+      {!isAnnual && (m.status === "activa" || m.status === "atrasada" || m.status === "finalizada") && (
         <div className="mt-4">
           <div className={`flex justify-between text-xs mb-1 ${muted}`}>
             <span>{made} de {total} pagos</span>
@@ -582,15 +601,20 @@ function MembershipStatusCard({ m }: { m: Membership }) {
             <p className={`text-sm mb-3 ${strong}`}>¡Tu membresía está lista! Elige cómo pagar:</p>
             <div className="grid sm:grid-cols-2 gap-2">
               <button onClick={() => pay("card")} disabled={!!paying} className={primary}>
-                {paying === "card" ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />} Tarjeta · cobro automático cada {period}
+                {paying === "card" ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}
+                {isAnnual ? " Pagar con tarjeta · pago único" : ` Tarjeta · cobro automático cada ${period}`}
               </button>
               {oxxoBtn}
             </div>
-            <p className={`text-xs mt-2 ${muted}`}>Con tarjeta no te preocupas: se cobra solo cada {period} y termina a los 12 meses. Con OXXO generas una ficha cada {period} desde aquí.</p>
+            <p className={`text-xs mt-2 ${muted}`}>
+              {isAnnual
+                ? "Un solo pago cubre tus 12 meses de mantenimiento."
+                : `Con tarjeta no te preocupas: se cobra solo cada ${period} y termina a los 12 meses. Con OXXO generas una ficha cada ${period} desde aquí.`}
+            </p>
           </>
         )}
 
-        {m.status === "activa" && m.paymentMethod === "oxxo" && (
+        {m.status === "activa" && m.paymentMethod === "oxxo" && !isAnnual && (
           pendingVoucher ? (
             <a href={m.oxxoVoucherUrl!} target="_blank" rel="noopener noreferrer" className={`${secondary} w-full sm:w-auto inline-flex`}>
               <Store size={15} /> Ver mi ficha OXXO pendiente
@@ -605,7 +629,7 @@ function MembershipStatusCard({ m }: { m: Membership }) {
           )
         )}
 
-        {m.status === "activa" && m.paymentMethod === "card" && (
+        {m.status === "activa" && m.paymentMethod === "card" && !isAnnual && (
           <p className={`text-xs ${muted}`}>Todo en orden: el siguiente cobro se hace solo a tu tarjeta.</p>
         )}
 

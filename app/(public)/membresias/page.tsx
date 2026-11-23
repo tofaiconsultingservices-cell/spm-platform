@@ -42,7 +42,7 @@ export default function MembresiasPublicPage() {
           </h1>
           <p className="mt-4 text-lg text-[var(--text-secondary)] max-w-2xl">
             Motonetas, motos de trabajo, deportivas, BMW y europeas, dirt bikes, cuatrimotos y RZR.
-            Mano de obra −20%, refacciones −10% y pago semanal con 8% extra de descuento.
+            Mano de obra −20% y refacciones −10%. Paga cada mes, cada semana (−8% extra) o el año completo por adelantado (−15% extra).
           </p>
           <div className="flex flex-wrap gap-3 mt-8">
             <Link href={REGISTER_HREF}

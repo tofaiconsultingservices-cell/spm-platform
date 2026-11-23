@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
   }
   const canCard = m.status === "por_pagar" || (m.status === "atrasada" && m.paymentMethod !== "card");
   // Si paga con tarjeta y un cobro falló, Stripe reintenta ese mismo cobro: no ofrecer OXXO para no cobrar doble.
+  if (billing === "annual" && m.status !== "por_pagar") {
+    return NextResponse.json({ error: "Esta membresía anual ya está pagada." }, { status: 409 });
+  }
   const canOxxo = m.status === "por_pagar"
     || (m.status === "atrasada" && m.paymentMethod !== "card")
     || (m.status === "activa" && m.paymentMethod === "oxxo");
