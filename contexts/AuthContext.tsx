@@ -1,9 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
@@ -22,6 +24,7 @@ interface AuthContextValue {
   redirectError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signUp: (name: string, email: string, password: string, phone?: string) => Promise<void>;
   signOut: () => Promise<void>;
   hasRole: (minimum: UserRole) => boolean;
 }
@@ -74,6 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [redirectError, setRedirectError] = useState<string | null>(null);
+  // Datos capturados en el registro, usados al crear el documento users/{uid}
+  const pendingProfile = useRef<{ name: string; phone?: string } | null>(null);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
@@ -159,10 +164,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { id: snap.id, ...data } as SPMUser;
     }
 
+    const pending = pendingProfile.current;
+    pendingProfile.current = null;
+
     const newUser: Omit<SPMUser, "id"> = {
       uid: fbUser.uid,
       email: fbUser.email ?? "",
-      displayName: fbUser.displayName ?? fbUser.email ?? "Usuario",
+      displayName: pending?.name || fbUser.displayName || fbUser.email || "Usuario",
+      ...(pending?.phone ? { phone: pending.phone } : {}),
       role: "viewer",
       // undefined is valid for the TypeScript type but Firestore rejects it —
       // keep it undefined in the object but exclude it from the Firestore doc below
@@ -182,6 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastLogin: serverTimestamp(),
     };
     if (newUser.photoURL) docData.photoURL = newUser.photoURL;
+    if (newUser.phone) docData.phone = newUser.phone;
 
     await setDoc(ref, docData);
 
@@ -191,6 +201,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signIn(email: string, password: string) {
     const auth = getFirebaseAuth();
     await signInWithEmailAndPassword(auth, email, password);
+  }
+
+  /**
+   * Registro de cliente con correo y contraseña. El documento users/{uid}
+   * se crea con role "viewer" en fetchOrCreateUser (vía onAuthStateChanged).
+   */
+  async function signUp(name: string, email: string, password: string, phone?: string) {
+    const auth = getFirebaseAuth();
+    pendingProfile.current = { name: name.trim(), ...(phone?.trim() ? { phone: phone.trim() } : {}) };
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: name.trim() }).catch(() => { /* non-fatal */ });
+    } catch (err) {
+      pendingProfile.current = null;
+      throw err;
+    }
   }
 
   /**
@@ -252,7 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, firebaseUser, loading, redirectError, signIn, signInWithGoogle, signOut, hasRole }}
+      value={{ user, firebaseUser, loading, redirectError, signIn, signInWithGoogle, signUp, signOut, hasRole }}
     >
       {children}
     </AuthContext.Provider>
