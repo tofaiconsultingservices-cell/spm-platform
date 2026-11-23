@@ -1,8 +1,13 @@
 /**
  * Membresías de mantenimiento — configuración de precios y cálculo.
  *
- * Precios de referencia de rango medio en MXN. Cada servicio tiene
- * [refacción, mano de obra] por clase 1–5:
+ * Cada servicio tiene [costo de refacción con proveedor (MXN), horas de mano de obra]
+ * por clase 1–5. El precio al cliente se calcula así:
+ *   refacción  = costo de proveedor × (1 + partsMarkup)          → +70%
+ *   mano de obra = horas × tarifa de mercado por hora × (1 + laborMarkup) → +15%
+ * La tarifa de mercado es la de talleres de motos independientes del área
+ * metropolitana de Monterrey (San Pedro, Monterrey, San Nicolás, Guadalupe,
+ * Apodaca, Santa Catarina, Escobedo; radio de 25–32 km), por clase:
  *   1 = chica (≤150 cc) · 2 = mediana (150–400) · 3 = media-alta (400–700)
  *   4 = grande (700–1000) · 5 = superbike / turbo / premium grande
  *
@@ -24,6 +29,7 @@ export interface VehicleType {
   id: VehicleTypeId; icon: string; name: string; ex: string; wheels: 2 | 4;
   mult: { p: number; l: number }; ranges: VehicleRange[]; items: ServiceId[];
 }
+/** p: por clase 1–5, [costo de refacción con proveedor en MXN, horas de mano de obra] */
 export interface ServiceDef { name: string; name4?: string; desc: string; p: [number, number][]; def: Freq3 }
 export interface PerkDef { id: PerkId; name: string; base: number; desc: string; types: "all" | VehicleTypeId[] }
 
@@ -33,6 +39,10 @@ export const MEMBERSHIP_CONFIG = {
   memberPartsOff: 0.1,
   weeklyOff: 0.08,
   annualOff: 0.15,          // descuento por pagar el año completo por adelantado
+  /** Tarifa de mercado por hora (MXN) en talleres de motos del área metro de Monterrey, por clase. */
+  laborRate: { 1: 280, 2: 300, 3: 340, 4: 400, 5: 460 } as Record<Cls, number>,
+  laborMarkup: 0.15,        // +15% sobre la tarifa de mercado
+  partsMarkup: 0.7,         // +70% sobre el costo de proveedor
   fleet: [{ min: 5, off: 0.1 }, { min: 3, off: 0.05 }],
   perkMult: { 1: 1, 2: 1.1, 3: 1.3, 4: 1.6, 5: 2 } as Record<Cls, number>,
 };
@@ -76,37 +86,37 @@ export const USAGES: { id: UsageId; name: string; note: string }[] = [
 
 export const SERVICES: Record<ServiceId, ServiceDef> = {
   aceite:       { name: "Cambio de aceite y filtro", desc: "Aceite semisintético o sintético según tu motor, filtro de aceite y revisión de niveles.",
-                  p: [[260, 150], [420, 200], [750, 250], [1300, 350], [1900, 450]], def: [12, 3, 8] },
+                  p: [[170, 0.5], [270, 0.6], [490, 0.75], [840, 0.9], [1240, 1]], def: [12, 3, 8] },
   afinacion:    { name: "Afinación", desc: "Bujía(s), filtro de aire, limpieza de inyección o carburador y ajuste de ralentí.",
-                  p: [[250, 300], [450, 400], [900, 600], [1800, 900], [2600, 1200]], def: [3, 1, 2] },
+                  p: [[160, 1], [290, 1.25], [580, 1.75], [1170, 2.5], [1690, 3]], def: [3, 1, 2] },
   cvt:          { name: "Banda CVT y clutch", desc: "Banda nueva, revisión de rodillos o variador y limpieza del clutch.",
-                  p: [[450, 350], [800, 450], [1600, 600], [2900, 900], [3800, 1200]], def: [2, 1, 2] },
+                  p: [[290, 1], [520, 1.25], [1040, 1.5], [1880, 2], [2470, 2.5]], def: [2, 1, 2] },
   cadena:       { name: "Kit de arrastre", desc: "Cadena, catarina y piñón nuevos, instalados y tensados.",
-                  p: [[700, 250], [1300, 300], [2400, 400], [4500, 500], [9500, 650]], def: [2, 1, 2] },
+                  p: [[460, 0.75], [840, 1], [1560, 1], [2920, 1.25], [6180, 1.5]], def: [2, 1, 2] },
   final:        { name: "Cardán / transmisión final", desc: "Aceite del cardán (BMW boxer, GS, RT) o revisión de banda (Harley).",
-                  p: [[200, 250], [300, 300], [450, 400], [600, 500], [800, 600]], def: [1, 1, 1] },
+                  p: [[130, 0.75], [200, 0.75], [290, 1], [390, 1], [520, 1.25]], def: [1, 1, 1] },
   frenos:       { name: "Frenos completos", desc: "Balatas delanteras y traseras, purga y líquido de frenos DOT 4.",
-                  p: [[300, 250], [500, 300], [900, 400], [1600, 500], [2600, 650]], def: [3, 1, 3] },
+                  p: [[200, 0.75], [320, 1], [580, 1], [1040, 1.25], [1690, 1.5]], def: [3, 1, 3] },
   refrigerante: { name: "Sistema de enfriamiento", desc: "Refrigerante nuevo, purga y revisión de radiador y mangueras. Solo motores enfriados por líquido.",
-                  p: [[200, 200], [250, 250], [350, 300], [500, 350], [700, 450]], def: [1, 1, 2] },
+                  p: [[130, 0.5], [160, 0.75], [230, 0.75], [320, 1], [460, 1]], def: [1, 1, 2] },
   valvulas:     { name: "Ajuste de válvulas", desc: "Revisión de holguras y ajuste con calzas o tornillo. Incluye empaque de tapa.",
-                  p: [[0, 500], [150, 800], [300, 1400], [600, 2400], [900, 3500]], def: [0, 0, 2] },
+                  p: [[0, 1.5], [100, 2.5], [200, 4], [390, 5.5], [580, 7]], def: [0, 0, 2] },
   suspension:   { name: "Suspensión", desc: "Aceite de barras y retenes nuevos; revisión de amortiguadores y bujes.",
-                  p: [[350, 450], [550, 600], [800, 900], [1200, 1300], [1800, 1800]], def: [0, 1, 2] },
+                  p: [[230, 1.5], [360, 2], [520, 2.5], [780, 3], [1170, 4]], def: [0, 1, 2] },
   diferencial:  { name: "Diferenciales y transmisión", desc: "Aceite de diferencial delantero, trasero y caja de cambios.",
-                  p: [[300, 250], [400, 300], [700, 450], [1000, 600], [1400, 800]], def: [2, 1, 2] },
+                  p: [[200, 0.75], [260, 1], [460, 1.25], [650, 1.5], [910, 2]], def: [2, 1, 2] },
   engrase:      { name: "Engrase de chasis y crucetas", desc: "Engrase de rótulas, crucetas y juntas homocinéticas; revisión de botas.",
-                  p: [[60, 200], [80, 250], [120, 350], [150, 450], [200, 550]], def: [6, 3, 6] },
+                  p: [[40, 0.5], [50, 0.75], [80, 1], [100, 1], [130, 1.25]], def: [6, 3, 6] },
   topend:       { name: "Top end (pistón y anillos)", desc: "Pistón, anillos, perno y empaques. Clave en 2 tiempos y motocross.",
-                  p: [[900, 1200], [2200, 2000], [3500, 3000], [4800, 3800], [6000, 4500]], def: [0, 0, 1] },
+                  p: [[580, 3.5], [1430, 5], [2280, 7], [3120, 8], [3900, 9]], def: [0, 0, 1] },
   llantas:      { name: "Par de llantas", name4: "Juego de 4 llantas", desc: "Llantas de rango medio con montaje, balanceo y válvulas.",
-                  p: [[1400, 300], [2200, 350], [4500, 450], [7500, 500], [9500, 600]], def: [0, 0, 1] },
+                  p: [[910, 1], [1430, 1], [2920, 1.25], [4880, 1.25], [6180, 1.5]], def: [0, 0, 1] },
   bateria:      { name: "Batería", desc: "Batería nueva de gel o AGM, instalada y con prueba de carga.",
-                  p: [[600, 80], [900, 100], [1400, 120], [2200, 150], [3200, 200]], def: [0, 0, 0] },
+                  p: [[390, 0.25], [580, 0.25], [910, 0.3], [1430, 0.4], [2080, 0.5]], def: [0, 0, 0] },
   diagnostico:  { name: "Diagnóstico por escáner", desc: "Lectura de códigos y sensores; reinicio del indicador de servicio.",
-                  p: [[0, 200], [0, 250], [0, 350], [0, 500], [0, 700]], def: [2, 1, 2] },
+                  p: [[0, 0.5], [0, 0.75], [0, 1], [0, 1], [0, 1.25]], def: [2, 1, 2] },
   lavado:       { name: "Lavado y detallado", desc: "Lavado a presión, desengrase de motor y cadena, encerado.",
-                  p: [[30, 120], [50, 160], [70, 220], [90, 300], [120, 400]], def: [0, 2, 4] },
+                  p: [[20, 0.4], [30, 0.5], [50, 0.6], [60, 0.75], [80, 1]], def: [0, 2, 4] },
 };
 
 /** Frecuencias recomendadas distintas por tipo: [trabajo, recreativo, competencia] */
@@ -166,9 +176,10 @@ export function serviceName(id: ServiceId, type: VehicleTypeId): string {
 export function unitPrice(id: ServiceId, s: Pick<BuilderState, "type" | "range">) {
   const t = getType(s.type);
   const cls = getRange(s).cls;
-  let [p, l] = SERVICES[id].p[cls - 1];
-  p *= t.mult.p;
-  l *= t.mult.l;
+  const C = MEMBERSHIP_CONFIG;
+  const [cost, hours] = SERVICES[id].p[cls - 1];
+  let p = cost * (1 + C.partsMarkup) * t.mult.p;
+  let l = hours * C.laborRate[cls] * (1 + C.laborMarkup) * t.mult.l;
   if (id === "llantas" && t.wheels === 4) { p *= 2; l *= 2; }
   return { p: r10(p), l: r10(l) };
 }
