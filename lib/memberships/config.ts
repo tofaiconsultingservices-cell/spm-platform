@@ -11,7 +11,7 @@
 
 export type VehicleTypeId = "scooter" | "trabajo" | "deportiva" | "premium" | "dirt" | "atv" | "utv";
 export type UsageId = "trabajo" | "recreativo" | "competencia";
-export type BillingId = "weekly" | "monthly";
+export type BillingId = "weekly" | "monthly" | "annual";
 export type ServiceId =
   | "aceite" | "afinacion" | "cvt" | "cadena" | "final" | "frenos" | "refrigerante" | "valvulas"
   | "suspension" | "diferencial" | "engrase" | "topend" | "llantas" | "bateria" | "diagnostico" | "lavado";
@@ -32,6 +32,7 @@ export const MEMBERSHIP_CONFIG = {
   memberLaborOff: 0.2,
   memberPartsOff: 0.1,
   weeklyOff: 0.08,
+  annualOff: 0.15,          // descuento por pagar el año completo por adelantado
   fleet: [{ min: 5, off: 0.1 }, { min: 3, off: 0.05 }],
   perkMult: { 1: 1, 2: 1.1, 3: 1.3, 4: 1.6, 5: 2 } as Record<Cls, number>,
 };
@@ -196,7 +197,7 @@ export interface MembershipQuote {
   partsYr: number; laborYr: number; list: number; member: number; memberSave: number;
   perks: { id: PerkId; name: string; price: number }[]; perksYr: number;
   perUnitYr: number; fleetOff: number; fleetSave: number;
-  year: number; monthly: number; weekly: number; yearWeekly: number;
+  year: number; monthly: number; weekly: number; yearWeekly: number; annual: number;
 }
 
 export function calcMembership(s: BuilderState): MembershipQuote {
@@ -224,7 +225,21 @@ export function calcMembership(s: BuilderState): MembershipQuote {
   return {
     lines, partsYr, laborYr, list, member, memberSave: list - member, perks, perksYr, perUnitYr,
     fleetOff, fleetSave: perUnitYr * s.units * fleetOff, year, monthly: year / 12, weekly, yearWeekly: weekly * 52,
+    annual: year * (1 - C.annualOff),
   };
 }
+
+/** Cuánto paga el cliente según la forma de pago elegida. */
+export function billingView(q: MembershipQuote, billing: BillingId) {
+  if (billing === "weekly") {
+    return { pay: q.weekly, total: q.yearWeekly, count: 52, per: "semana", perShort: "sem", label: "semanal" };
+  }
+  if (billing === "annual") {
+    return { pay: q.annual, total: q.annual, count: 1, per: "año", perShort: "año", label: "anual" };
+  }
+  return { pay: q.monthly, total: q.year, count: 12, per: "mes", perShort: "mes", label: "mensual" };
+}
+
+export const periodName = (billing: BillingId) => (billing === "weekly" ? "semana" : billing === "annual" ? "año" : "mes");
 
 export const fmtMXN = (n: number) => "$" + Math.round(n).toLocaleString("es-MX");

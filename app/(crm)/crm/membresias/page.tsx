@@ -10,7 +10,7 @@ import {
   subscribeAllMemberships, confirmMembership, totalPaymentsFor,
   type Membership, type MembershipStatus,
 } from "@/lib/firestore/memberships";
-import { fmtMXN } from "@/lib/memberships/config";
+import { fmtMXN, periodName } from "@/lib/memberships/config";
 import type { Motorcycle } from "@/types";
 import { Loader2, Check, X, MessageCircle, Bike, CreditCard, Store } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
@@ -49,7 +49,7 @@ function MembershipCard({ m, isDark }: { m: Membership; isDark: boolean }) {
   const [moto, setMoto] = useState<Motorcycle | null>(null);
   const [amount, setAmount] = useState(String(m.confirmedAmount ?? m.paymentAmount ?? ""));
   const [busy, setBusy] = useState(false);
-  const period = m.billing === "weekly" ? "semana" : "mes";
+  const period = periodName(m.billing);
   const total = totalPaymentsFor(m.billing);
 
   useEffect(() => {

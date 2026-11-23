@@ -46,9 +46,10 @@ export interface Membership {
   stripeSubscriptionId?: string;
   oxxoVoucherUrl?: string | null;
   oxxoPendingUntil?: Timestamp;
+  termEndsAt?: Timestamp;
 }
 
-export const totalPaymentsFor = (billing: BuilderState["billing"]) => (billing === "weekly" ? 52 : 12);
+export const totalPaymentsFor = (billing: BuilderState["billing"]) => (billing === "weekly" ? 52 : billing === "annual" ? 1 : 12);
 
 /** Membresías de todos los clientes (CRM, operador o superior). */
 export function subscribeAllMemberships(cb: (m: Membership[]) => void): Unsubscribe {
