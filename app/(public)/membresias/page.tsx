@@ -12,19 +12,20 @@ export const metadata = {
 
 const REGISTER_HREF = "/login?modo=registro&from=/portal/membresias";
 
-/** Precio semanal más bajo de cada tipo (uso recreativo, cilindrada menor). */
-function fromWeekly(typeId: (typeof VEHICLE_TYPES)[number]["id"]): number {
+/** Precio mensual más bajo de cada tipo (uso recreativo, cilindrada menor). */
+function fromMonthly(typeId: (typeof VEHICLE_TYPES)[number]["id"]): number {
   const q = calcMembership({
     type: typeId, range: 0, usage: "recreativo", freq: recommendedFreq(typeId, "recreativo"),
-    perks: [], parts: true, units: 1, billing: "weekly", model: "",
+    perks: [], parts: true, units: 1, billing: "monthly", model: "",
   });
-  return q.weekly;
+  return q.monthly;
 }
 
 const STEPS = [
   { n: 1, title: "Crea tu cuenta", desc: "Con tu correo o con Google. Así guardamos tu plan y tu historial de servicios." },
-  { n: 2, title: "Arma tu paquete", desc: "Eliges tu vehículo, cilindrada y servicios. Ves el precio de refacción y mano de obra de cada uno." },
-  { n: 3, title: "Activamos tu plan", desc: "Revisamos tu vehículo, confirmamos el precio y empiezas a pagar semanal o mensual." },
+  { n: 2, title: "Registra tu vehículo", desc: "Marca, modelo, año, VIN, 4 fotos y cómo lo usas, para que lleguemos preparados." },
+  { n: 3, title: "Arma tu paquete", desc: "Eliges tu vehículo, cilindrada y servicios. Ves el precio de refacción y mano de obra de cada uno." },
+  { n: 4, title: "Activamos tu plan", desc: "Revisamos tu vehículo, confirmamos el precio y empiezas a pagar semanal o mensual." },
 ];
 
 export default function MembresiasPublicPage() {
@@ -61,14 +62,14 @@ export default function MembresiasPublicPage() {
                 <h3 className="font-display font-bold mt-3">{t.name}</h3>
                 <p className="text-sm text-[var(--text-secondary)] mt-1">{t.ex}</p>
                 <p className="mt-3 text-sm">
-                  Desde <span className="font-display font-bold text-xl text-[var(--color-spm-red-light)]">{fmtMXN(fromWeekly(t.id))}</span>
-                  <span className="text-[var(--text-secondary)]">/semana</span>
+                  Desde <span className="font-display font-bold text-xl text-[var(--color-spm-red-light)]">{fmtMXN(fromMonthly(t.id))}</span>
+                  <span className="text-[var(--text-secondary)]">/mes</span>
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4 mt-14">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-14">
             {STEPS.map(s => (
               <div key={s.n} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6">
                 <div className="w-9 h-9 rounded-lg bg-[var(--color-spm-red)] text-white font-display font-bold grid place-items-center">{s.n}</div>

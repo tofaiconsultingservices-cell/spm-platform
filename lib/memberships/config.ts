@@ -19,7 +19,7 @@ export type PerkId = "express" | "ruta" | "remolque" | "parada" | "prerodada" | 
 type Cls = 1 | 2 | 3 | 4 | 5;
 type Freq3 = [number, number, number];
 
-export interface VehicleRange { label: string; note?: string; cls: Cls }
+export interface VehicleRange { label: string; note?: string; cls: Cls; maxCc: number }
 export interface VehicleType {
   id: VehicleTypeId; icon: string; name: string; ex: string; wheels: 2 | 4;
   mult: { p: number; l: number }; ranges: VehicleRange[]; items: ServiceId[];
@@ -39,31 +39,31 @@ export const MEMBERSHIP_CONFIG = {
 export const VEHICLE_TYPES: VehicleType[] = [
   { id: "scooter", icon: "🛵", name: "Motoneta / Scooter", ex: "Italika D150, Yamaha NMax, Honda PCX, Vespa", wheels: 2,
     mult: { p: 1, l: 1 },
-    ranges: [{ label: "50–125 cc", cls: 1 }, { label: "126–200 cc", cls: 2 }, { label: "201–400 cc", note: "Maxi scooter", cls: 3 }],
+    ranges: [{ label: "50–125 cc", cls: 1, maxCc: 125 }, { label: "126–200 cc", cls: 2, maxCc: 200 }, { label: "201–400 cc", note: "Maxi scooter", cls: 3, maxCc: 400 }],
     items: ["aceite", "afinacion", "cvt", "frenos", "refrigerante", "llantas", "bateria", "diagnostico", "lavado"] },
   { id: "trabajo", icon: "📦", name: "Moto de trabajo / urbana", ex: "Italika FT150, Honda Cargo, Pulsar NS200, Vento", wheels: 2,
     mult: { p: 1, l: 1 },
-    ranges: [{ label: "110–150 cc", cls: 1 }, { label: "151–250 cc", cls: 2 }, { label: "251–400 cc", cls: 3 }],
+    ranges: [{ label: "110–150 cc", cls: 1, maxCc: 150 }, { label: "151–250 cc", cls: 2, maxCc: 250 }, { label: "251–400 cc", cls: 3, maxCc: 400 }],
     items: ["aceite", "afinacion", "cadena", "frenos", "suspension", "valvulas", "refrigerante", "llantas", "bateria", "lavado"] },
   { id: "deportiva", icon: "🏍️", name: "Deportiva / Naked", ex: "Yamaha R6/R1/MT, Kawasaki Ninja/Z, Suzuki GSX-R/GSX-S, Honda CBR", wheels: 2,
     mult: { p: 1, l: 1 },
-    ranges: [{ label: "250–400 cc", cls: 2 }, { label: "401–700 cc", cls: 3 }, { label: "701–1000 cc", cls: 4 }, { label: "Más de 1000 cc", cls: 5 }],
+    ranges: [{ label: "250–400 cc", cls: 2, maxCc: 400 }, { label: "401–700 cc", cls: 3, maxCc: 700 }, { label: "701–1000 cc", cls: 4, maxCc: 1000 }, { label: "Más de 1000 cc", cls: 5, maxCc: 99999 }],
     items: ["aceite", "afinacion", "cadena", "frenos", "refrigerante", "valvulas", "suspension", "llantas", "bateria", "diagnostico", "lavado"] },
   { id: "premium", icon: "💎", name: "Premium europea / americana", ex: "BMW S1000RR, GS, RT · Ducati · KTM · Triumph · Harley-Davidson", wheels: 2,
     mult: { p: 1.3, l: 1.25 },
-    ranges: [{ label: "300–500 cc", cls: 2 }, { label: "501–900 cc", cls: 3 }, { label: "901–1100 cc", cls: 4 }, { label: "Más de 1100 cc", cls: 5 }],
+    ranges: [{ label: "300–500 cc", cls: 2, maxCc: 500 }, { label: "501–900 cc", cls: 3, maxCc: 900 }, { label: "901–1100 cc", cls: 4, maxCc: 1100 }, { label: "Más de 1100 cc", cls: 5, maxCc: 99999 }],
     items: ["aceite", "afinacion", "cadena", "final", "frenos", "refrigerante", "valvulas", "suspension", "llantas", "bateria", "diagnostico", "lavado"] },
   { id: "dirt", icon: "⛰️", name: "Dirt bike / Motocross / Enduro", ex: "Honda CRF, Yamaha YZ, KTM SX/EXC, Kawasaki KX", wheels: 2,
     mult: { p: 1, l: 1 },
-    ranges: [{ label: "50–110 cc", note: "Infantil", cls: 1 }, { label: "125–250 cc", cls: 2 }, { label: "251–450 cc", cls: 3 }, { label: "Más de 450 cc", cls: 4 }],
+    ranges: [{ label: "50–110 cc", note: "Infantil", cls: 1, maxCc: 110 }, { label: "125–250 cc", cls: 2, maxCc: 250 }, { label: "251–450 cc", cls: 3, maxCc: 450 }, { label: "Más de 450 cc", cls: 4, maxCc: 99999 }],
     items: ["aceite", "afinacion", "cadena", "frenos", "refrigerante", "valvulas", "suspension", "topend", "llantas", "lavado"] },
   { id: "atv", icon: "🛞", name: "Cuatrimoto / ATV", ex: "Polaris Sportsman, Can-Am Outlander, Honda FourTrax, Yamaha Raptor", wheels: 4,
     mult: { p: 1, l: 1.05 },
-    ranges: [{ label: "50–150 cc", cls: 1 }, { label: "151–400 cc", cls: 2 }, { label: "401–700 cc", cls: 3 }, { label: "701–1000 cc", cls: 4 }],
+    ranges: [{ label: "50–150 cc", cls: 1, maxCc: 150 }, { label: "151–400 cc", cls: 2, maxCc: 400 }, { label: "401–700 cc", cls: 3, maxCc: 700 }, { label: "701–1000 cc", cls: 4, maxCc: 1000 }],
     items: ["aceite", "afinacion", "cvt", "cadena", "frenos", "refrigerante", "valvulas", "suspension", "diferencial", "engrase", "llantas", "bateria", "lavado"] },
   { id: "utv", icon: "🏜️", name: "Side by Side / UTV / RZR", ex: "Polaris RZR y Ranger, Can-Am Maverick, Honda Talon", wheels: 4,
     mult: { p: 1.1, l: 1.15 },
-    ranges: [{ label: "200 cc", note: "Juvenil", cls: 2 }, { label: "500–900 cc", cls: 3 }, { label: "901–1000 cc", cls: 4 }, { label: "Turbo / Pro R", cls: 5 }],
+    ranges: [{ label: "200 cc", note: "Juvenil", cls: 2, maxCc: 250 }, { label: "500–900 cc", cls: 3, maxCc: 900 }, { label: "901–1000 cc", cls: 4, maxCc: 1000 }, { label: "Turbo / Pro R", cls: 5, maxCc: 99999 }],
     items: ["aceite", "afinacion", "cvt", "frenos", "refrigerante", "valvulas", "suspension", "diferencial", "engrase", "llantas", "bateria", "diagnostico", "lavado"] },
 ];
 
@@ -148,6 +148,14 @@ export const getRange = (s: Pick<BuilderState, "type" | "range">) => {
   const t = getType(s.type);
   return t.ranges[s.range] ?? t.ranges[0];
 };
+
+/** Índice de cilindrada que corresponde a los cc del vehículo. */
+export function rangeIndexForCc(type: VehicleTypeId, cc?: number): number {
+  const ranges = getType(type).ranges;
+  if (!cc) return 0;
+  const i = ranges.findIndex(r => cc <= r.maxCc);
+  return i === -1 ? ranges.length - 1 : i;
+}
 
 export function serviceName(id: ServiceId, type: VehicleTypeId): string {
   const sv = SERVICES[id];

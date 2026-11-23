@@ -11,6 +11,7 @@ export type MembershipStatus = "pendiente" | "activa" | "cancelada";
 export interface Membership {
   id: string;
   uid: string;
+  motorcycleId: string;
   clientEmail: string;
   clientName: string;
   status: MembershipStatus;

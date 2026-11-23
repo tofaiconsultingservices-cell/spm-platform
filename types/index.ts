@@ -126,7 +126,15 @@ export interface Motorcycle {
   cilindrada?: number;
   ticketIds?: string[];
   photoUrl?: string;
+  /** Tipo de vehículo del armador de membresías (scooter, trabajo, deportiva, premium, dirt, atv, utv) */
+  vehicleType?: "scooter" | "trabajo" | "deportiva" | "premium" | "dirt" | "atv" | "utv";
+  usage?: "trabajo" | "recreativo" | "competencia";
+  /** Cómo usa el cliente su vehículo, en sus palabras */
+  description?: string;
+  /** Fotos del vehículo (URLs de Firebase Storage) */
+  photos?: { frente?: string; izquierdo?: string; derecho?: string; atras?: string };
   createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 // ============================================================

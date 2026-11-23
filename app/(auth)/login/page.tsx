@@ -52,10 +52,11 @@ export default function LoginPage() {
   useEffect(() => {
     if (!loading && user) {
       if (user.role === "mecanico") router.replace("/mecanico");
-      else if (user.role === "viewer") router.replace(fromPath ?? "/portal");
+      // Después de crear cuenta: registrar su vehículo (o regresar a donde venía)
+      else if (user.role === "viewer") router.replace(fromPath ?? (mode === "registro" ? "/portal/moto?nuevo=1" : "/portal"));
       else router.replace("/crm/dashboard");
     }
-  }, [user, loading, router, fromPath]);
+  }, [user, loading, router, fromPath, mode]);
 
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault();

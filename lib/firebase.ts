@@ -3,6 +3,7 @@ import { getFirestore, type Firestore } from "firebase/firestore";
 import { getAuth, type Auth } from "firebase/auth";
 import { getDatabase, type Database } from "firebase/database";
 import { getMessaging, type Messaging } from "firebase/messaging";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -42,6 +43,15 @@ export function getFirebaseAuth(): Auth {
     auth = getAuth(getFirebaseApp());
   }
   return auth;
+}
+
+let storage: FirebaseStorage;
+
+export function getFirebaseStorage(): FirebaseStorage {
+  if (!storage) {
+    storage = getStorage(getFirebaseApp());
+  }
+  return storage;
 }
 
 export function getRtdb(): Database {

@@ -7,12 +7,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   VEHICLE_TYPES, USAGES, SERVICES, MEMBERSHIP_CONFIG,
-  getType, getRange, serviceName, unitPrice, defaultFreq, recommendedFreq,
+  getType, getRange, serviceName, unitPrice, defaultFreq, recommendedFreq, rangeIndexForCc,
   availablePerks, perkPrice, calcMembership, fmtMXN,
   type BuilderState, type ServiceId, type PerkId, type VehicleTypeId, type UsageId, type MembershipQuote,
 } from "@/lib/memberships/config";
 import { createMembership, subscribeMyMemberships, type Membership } from "@/lib/firestore/memberships";
-import { ArrowLeft, Loader2, Minus, Plus, Check, MessageCircle, BadgeCheck, Clock } from "lucide-react";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { getDb } from "@/lib/firebase";
+import VehicleForm from "@/components/portal/VehicleForm";
+import type { Motorcycle } from "@/types";
+import { ArrowLeft, Loader2, Minus, Plus, Check, MessageCircle, BadgeCheck, Clock, Bike } from "lucide-react";
 
 const INITIAL: BuilderState = {
   type: "trabajo", range: 0, usage: "trabajo", freq: recommendedFreq("trabajo", "trabajo"),
@@ -55,6 +59,26 @@ export default function MembresiasPage() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [building, setBuilding] = useState(true);
+  const [motos, setMotos] = useState<Motorcycle[]>([]);
+  const [motosLoaded, setMotosLoaded] = useState(false);
+  const [motoId, setMotoId] = useState<string | null>(null);
+  const [addingMoto, setAddingMoto] = useState(false);
+
+  /** Al elegir un vehículo registrado se llenan tipo, cilindrada, uso y modelo. */
+  function selectMoto(m: Motorcycle) {
+    setMotoId(m.id);
+    setS(p => {
+      const type = m.vehicleType ?? p.type;
+      const usage = m.usage ?? p.usage;
+      return {
+        ...p, type, usage,
+        range: m.vehicleType ? rangeIndexForCc(type, m.cilindrada) : p.range,
+        freq: recommendedFreq(type, usage),
+        model: `${m.brand} ${m.model} ${m.year}`.trim(),
+        perks: p.perks.filter(id => availablePerks(type).some(x => x.id === id)),
+      };
+    });
+  }
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login?modo=registro&from=/portal/membresias");
@@ -70,6 +94,19 @@ export default function MembresiasPage() {
       first = false;
     });
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let first = true;
+    const qy = query(collection(getDb(), "motorcycles"), where("clientId", "==", user.uid));
+    return onSnapshot(qy, snap => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Motorcycle);
+      setMotos(list);
+      setMotosLoaded(true);
+      if (first && list.length) selectMoto(list[0]);
+      first = false;
+    });
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const q = useMemo(() => calcMembership(s), [s]);
 
@@ -107,11 +144,13 @@ export default function MembresiasPage() {
 
   async function handleSubmit() {
     if (!user || !q.lines.length) return;
+    if (!motoId) { setError("Elige o registra tu vehículo primero."); return; }
     setError("");
     setSaving(true);
     try {
       const id = await createMembership({
         uid: user.uid,
+        motorcycleId: motoId,
         clientEmail: user.email,
         clientName: user.displayName,
         termMonths: 12,
@@ -210,10 +249,49 @@ export default function MembresiasPage() {
             </a>
             <p className={`text-xs mt-3 ${muted}`}>WhatsApp: 81 3388-0010</p>
           </section>
+        ) : !motosLoaded ? (
+          <div className="flex justify-center py-16"><Loader2 size={24} className="animate-spin text-[var(--color-spm-red)]" /></div>
+        ) : (motos.length === 0 || addingMoto) ? (
+          <section className={`${card} p-5 max-w-2xl mx-auto`}>
+            <h2 className={`font-display font-bold text-xl ${strong}`}>
+              {motos.length === 0 ? "Primero, registra tu vehículo" : "Agregar otro vehículo"}
+            </h2>
+            <p className={`text-sm mt-1 mb-5 ${muted}`}>
+              Marca, modelo, año, VIN, 4 fotos y cómo lo usas. Con esto armamos tu membresía y nuestros mecánicos llegan preparados.
+            </p>
+            <VehicleForm
+              onSaved={m => { selectMoto(m); setAddingMoto(false); }}
+              onCancel={motos.length ? () => setAddingMoto(false) : undefined}
+              submitLabel="Guardar y armar mi membresía"
+            />
+          </section>
         ) : (
           <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
             <section>
-              <Step n={1} title="¿Qué vehículo tienes?" />
+              <Step n={1} title="Tu vehículo" hint="Elige para cuál vehículo es la membresía." />
+              <div className="grid sm:grid-cols-2 gap-3">
+                {motos.map(m => (
+                  <button key={m.id} onClick={() => selectMoto(m)}
+                    className={`flex items-center gap-3 text-left rounded-2xl border p-3 transition-all ${motoId === m.id
+                      ? "border-[var(--color-spm-red-light)] ring-1 ring-[var(--color-spm-red-light)] " + (isDark ? "bg-slate-800" : "bg-blue-50")
+                      : isDark ? "bg-slate-900 border-white/10 hover:border-[var(--color-spm-red-light)]" : "bg-white border-gray-200 hover:border-[var(--color-spm-red-light)]"}`}>
+                    {m.photoUrl
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={m.photoUrl} alt="" className="w-16 h-12 rounded-lg object-cover flex-shrink-0" />
+                      : <span className="w-16 h-12 rounded-lg bg-[var(--color-spm-red)]/10 grid place-items-center flex-shrink-0"><Bike size={18} className="text-[var(--color-spm-red)]" /></span>}
+                    <span className="min-w-0">
+                      <span className={`block font-semibold text-sm truncate ${strong}`}>{m.brand} {m.model}</span>
+                      <span className={`block text-xs ${muted}`}>{m.year}{m.cilindrada ? ` · ${m.cilindrada} cc` : ""}{m.vin ? ` · VIN …${m.vin.slice(-6)}` : ""}</span>
+                    </span>
+                  </button>
+                ))}
+                <button onClick={() => setAddingMoto(true)}
+                  className={`rounded-2xl border border-dashed p-3 text-sm font-semibold text-[var(--color-spm-red-light)] ${isDark ? "border-white/15" : "border-gray-300"}`}>
+                  + Agregar otro vehículo
+                </button>
+              </div>
+
+              <Step n={2} title="Tipo de vehículo" hint="Lo tomamos de tu registro; cámbialo si no coincide." />
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                 {VEHICLE_TYPES.map(x => (
                   <button key={x.id} onClick={() => setType(x.id)}
@@ -227,7 +305,7 @@ export default function MembresiasPage() {
                 ))}
               </div>
 
-              <Step n={2} title="Cilindrada" hint={t.mult.p > 1 ? "Las refacciones y la mano de obra especializada cuestan más en esta categoría." : undefined} />
+              <Step n={3} title="Cilindrada" hint={t.mult.p > 1 ? "Las refacciones y la mano de obra especializada cuestan más en esta categoría." : undefined} />
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {t.ranges.map((r, i) => (
                   <button key={r.label} onClick={() => setS(p => ({ ...p, range: i }))} className={opt(s.range === i)}>
@@ -239,7 +317,7 @@ export default function MembresiasPage() {
                 placeholder="Marca, modelo y año (ej. BMW S 1000 RR 2022)"
                 className={`mt-3 w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-[var(--color-spm-red-light)] ${isDark ? "bg-slate-900 border-white/10 text-white placeholder:text-slate-500" : "bg-white border-gray-200 text-slate-900"}`} />
 
-              <Step n={3} title="¿Cómo la usas?" hint="Con esto te recomendamos cuántas veces al año hacer cada servicio." />
+              <Step n={4} title="¿Cómo la usas?" hint="Con esto te recomendamos cuántas veces al año hacer cada servicio." />
               <div className="grid sm:grid-cols-3 gap-2">
                 {USAGES.map(u => (
                   <button key={u.id} onClick={() => setUsage(u.id)} className={opt(s.usage === u.id)}>
@@ -248,7 +326,7 @@ export default function MembresiasPage() {
                 ))}
               </div>
 
-              <Step n={4} title="Elige tus servicios" hint="Ajusta cuántas veces al año quieres cada uno. En 0 no se incluye." />
+              <Step n={5} title="Elige tus servicios" hint="Ajusta cuántas veces al año quieres cada uno. En 0 no se incluye." />
               <div className="grid sm:grid-cols-2 gap-2 mb-3">
                 <button onClick={() => setS(p => ({ ...p, parts: true }))} className={opt(s.parts)}>
                   Refacciones + mano de obra<span className="block text-xs font-medium opacity-80">Nosotros ponemos todo</span>
@@ -294,7 +372,7 @@ export default function MembresiasPage() {
                 Volver a la recomendación
               </button>
 
-              <Step n={5} title="Beneficios de membresía" hint="Opcionales, con precio fijo al mes." />
+              <Step n={6} title="Beneficios de membresía" hint="Opcionales, con precio fijo al mes." />
               <div className="grid sm:grid-cols-2 gap-2">
                 {availablePerks(s.type).map(p => {
                   const on = s.perks.includes(p.id);
@@ -316,14 +394,14 @@ export default function MembresiasPage() {
                 })}
               </div>
 
-              <Step n={6} title="¿Cuántas unidades?" hint="Flotillas: 3–4 unidades −5% · 5 o más −10%." />
+              <Step n={7} title="¿Cuántas unidades?" hint="Flotillas: 3–4 unidades −5% · 5 o más −10%." />
               <div className={`inline-flex items-center gap-3 rounded-xl border p-2 ${isDark ? "border-white/10 bg-slate-900" : "border-gray-200 bg-white"}`}>
                 <button aria-label="Menos unidades" onClick={() => setS(p => ({ ...p, units: Math.max(1, p.units - 1) }))} className={`w-10 h-10 rounded-lg grid place-items-center ${isDark ? "bg-slate-800" : "bg-slate-100"}`}><Minus size={16} /></button>
                 <span className={`w-8 text-center font-display font-bold text-lg ${strong}`}>{s.units}</span>
                 <button aria-label="Más unidades" onClick={() => setS(p => ({ ...p, units: Math.min(50, p.units + 1) }))} className={`w-10 h-10 rounded-lg grid place-items-center ${isDark ? "bg-slate-800" : "bg-slate-100"}`}><Plus size={16} /></button>
               </div>
 
-              <Step n={7} title="¿Cómo quieres pagar?" hint="Plazo de 12 meses." />
+              <Step n={8} title="¿Cómo quieres pagar?" hint="Plazo de 12 meses." />
               <div className="grid sm:grid-cols-2 gap-2">
                 <button onClick={() => setS(p => ({ ...p, billing: "weekly" }))} className={opt(w)}>
                   Semanal On the Go

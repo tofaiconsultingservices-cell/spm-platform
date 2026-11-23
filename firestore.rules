@@ -75,11 +75,11 @@ service cloud.firestore {
 
     // ── Motorcycles ─────────────────────────────────────────────────────────
     match /motorcycles/{motoId} {
-      // Clients manage their own motorcycles
-      allow read, write: if isAuth() && (
-        resource == null ||
-        resource.data.clientId == request.auth.uid
-      );
+      // Clients manage their own motorcycles (and can only create them for themselves)
+      allow read, delete: if isAuth() && resource.data.clientId == request.auth.uid;
+      allow create: if isAuth() && request.resource.data.clientId == request.auth.uid;
+      allow update: if isAuth() && resource.data.clientId == request.auth.uid
+                    && request.resource.data.clientId == request.auth.uid;
       // Operators can read all motorcycles
       allow read: if hasRole('operador');
     }
