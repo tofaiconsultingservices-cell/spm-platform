@@ -140,9 +140,13 @@ service cloud.firestore {
       // El cliente crea su solicitud (siempre "pendiente") y lee las suyas
       allow create: if isAuth()
                     && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.status == 'pendiente';
+                    && request.resource.data.status == 'pendiente'
+                    && !request.resource.data.keys().hasAny([
+                         'confirmedAmount', 'paymentsMade', 'payments', 'paymentMethod',
+                         'stripeSubscriptionId', 'stripeCustomerId', 'nextPaymentAt'
+                       ]);
       allow read:   if isAuth() && resource.data.uid == request.auth.uid;
-      // El staff las revisa, activa o cancela
+      // El staff las revisa y confirma el precio; los pagos solo los escribe el servidor (Admin SDK)
       allow read, update: if hasRole('operador');
       allow delete: if hasRole('admin');
     }

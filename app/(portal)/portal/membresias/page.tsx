@@ -11,12 +11,12 @@ import {
   availablePerks, perkPrice, calcMembership, fmtMXN,
   type BuilderState, type ServiceId, type PerkId, type VehicleTypeId, type UsageId, type MembershipQuote,
 } from "@/lib/memberships/config";
-import { createMembership, subscribeMyMemberships, type Membership } from "@/lib/firestore/memberships";
+import { createMembership, subscribeMyMemberships, totalPaymentsFor, type Membership } from "@/lib/firestore/memberships";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import VehicleForm from "@/components/portal/VehicleForm";
 import type { Motorcycle } from "@/types";
-import { ArrowLeft, Loader2, Minus, Plus, Check, MessageCircle, BadgeCheck, Clock, Bike } from "lucide-react";
+import { ArrowLeft, Loader2, Minus, Plus, Check, MessageCircle, BadgeCheck, Clock, Bike, CreditCard, Store, AlertTriangle } from "lucide-react";
 
 const INITIAL: BuilderState = {
   type: "trabajo", range: 0, usage: "trabajo", freq: recommendedFreq("trabajo", "trabajo"),
@@ -43,9 +43,12 @@ function summaryText(s: BuilderState, q: MembershipQuote, name: string, id?: str
 }
 
 const STATUS_UI: Record<Membership["status"], { label: string; cls: string }> = {
-  pendiente: { label: "Pendiente de activar", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
-  activa:    { label: "Activa",               cls: "bg-green-500/15 text-green-400 border-green-500/30" },
-  cancelada: { label: "Cancelada",            cls: "bg-red-500/15 text-red-400 border-red-500/30" },
+  pendiente:  { label: "En revisión",        cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+  por_pagar:  { label: "Lista para pagar",   cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
+  activa:     { label: "Activa",             cls: "bg-green-500/15 text-green-400 border-green-500/30" },
+  atrasada:   { label: "Pago pendiente",     cls: "bg-red-500/15 text-red-400 border-red-500/30" },
+  finalizada: { label: "Completada",         cls: "bg-slate-500/15 text-slate-300 border-slate-500/30" },
+  cancelada:  { label: "Cancelada",          cls: "bg-slate-500/15 text-slate-400 border-slate-500/30" },
 };
 
 export default function MembresiasPage() {
@@ -63,6 +66,14 @@ export default function MembresiasPage() {
   const [motosLoaded, setMotosLoaded] = useState(false);
   const [motoId, setMotoId] = useState<string | null>(null);
   const [addingMoto, setAddingMoto] = useState(false);
+  const [pagoMsg, setPagoMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("pago");
+    if (p === "ok") setPagoMsg("¡Listo! Tu pago con tarjeta se registró. Puede tardar un minuto en aparecer aquí.");
+    else if (p === "oxxo") setPagoMsg("Tu ficha OXXO está lista. Págala en cualquier OXXO en los próximos 3 días; cuando se acredite, tu membresía se actualiza sola.");
+    else if (p === "cancelado") setPagoMsg("No se completó el pago. Puedes intentarlo de nuevo cuando quieras.");
+  }, []);
 
   /** Al elegir un vehículo registrado se llenan tipo, cilindrada, uso y modelo. */
   function selectMoto(m: Motorcycle) {
@@ -153,6 +164,7 @@ export default function MembresiasPage() {
         motorcycleId: motoId,
         clientEmail: user.email,
         clientName: user.displayName,
+        ...(user.phone ? { clientPhone: user.phone } : {}),
         termMonths: 12,
         vehicle: { type: s.type, typeName: t.name, range: getRange(s).label, model: s.model, usage: s.usage },
         selection: s,
@@ -198,36 +210,14 @@ export default function MembresiasPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 pt-6">
+        {pagoMsg && (
+          <div className={`${card} p-4 mb-4 text-sm ${strong}`}>{pagoMsg}</div>
+        )}
+
         {/* Membresías existentes */}
         {mine.length > 0 && (
           <section className="space-y-3 mb-6">
-            {mine.map(m => (
-              <div key={m.id} className={`${card} p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between`}>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <BadgeCheck size={18} className="text-[var(--color-spm-orange)]" />
-                    <span className={`font-semibold ${strong}`}>{m.vehicle.typeName} · {m.vehicle.range}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_UI[m.status].cls}`}>{STATUS_UI[m.status].label}</span>
-                  </div>
-                  <p className={`text-sm mt-1 ${muted}`}>
-                    {m.vehicle.model ? `${m.vehicle.model} · ` : ""}{m.services.length} servicios · folio {m.id.slice(0, 6).toUpperCase()}
-                  </p>
-                  {m.status === "pendiente" && (
-                    <p className={`text-xs mt-2 flex items-center gap-1.5 ${muted}`}>
-                      <Clock size={12} /> Te contactaremos para revisar tu vehículo y activar tu plan.{" "}
-                      <a className="text-[var(--color-spm-red-light)] hover:underline" target="_blank" rel="noopener noreferrer"
-                         href={`https://wa.me/${MEMBERSHIP_CONFIG.whatsapp}?text=${encodeURIComponent(`Hola, quiero activar mi membresía folio ${m.id.slice(0, 6).toUpperCase()}.`)}`}>
-                        Escríbenos por WhatsApp
-                      </a>
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className={`font-display font-bold text-2xl ${strong}`}>{fmtMXN(m.paymentAmount)}<span className={`text-sm font-medium ${muted}`}>/{m.billing === "weekly" ? "semana" : "mes"}</span></div>
-                  <div className={`text-xs ${muted}`}>Total 12 meses {fmtMXN(m.totalYear)}</div>
-                </div>
-              </div>
-            ))}
+            {mine.map(m => <MembershipStatusCard key={m.id} m={m} />)}
             {!building && (
               <button onClick={() => { setBuilding(true); setSavedId(null); }} className="text-sm font-semibold text-[var(--color-spm-red-light)] hover:underline">
                 + Armar membresía para otro vehículo
@@ -475,6 +465,169 @@ function Row({ label, value, muted, green }: { label: string; value: React.React
   return (
     <div className={`flex justify-between gap-2 ${green ? "text-green-500 font-semibold" : muted ?? ""}`}>
       <span>{label}</span><span>{value}</span>
+    </div>
+  );
+}
+
+/* ─────────────── Tarjeta de una membresía con su estado de pago ─────────────── */
+
+function MembershipStatusCard({ m }: { m: Membership }) {
+  const { firebaseUser } = useAuth();
+  const { isDark } = useTheme();
+  const [paying, setPaying] = useState<"card" | "oxxo" | null>(null);
+  const [error, setError] = useState("");
+
+  const strong = isDark ? "text-white" : "text-slate-900";
+  const muted = isDark ? "text-slate-400" : "text-slate-500";
+  const period = m.billing === "weekly" ? "semana" : "mes";
+  const total = totalPaymentsFor(m.billing);
+  const made = m.paymentsMade ?? 0;
+  const amount = m.confirmedAmount ?? m.paymentAmount;
+  const folio = m.id.slice(0, 6).toUpperCase();
+  const next = m.nextPaymentAt?.toDate?.();
+  const overdueOxxo = m.paymentMethod === "oxxo" && m.status === "activa" && next && next.getTime() < Date.now();
+  const pendingVoucher = m.oxxoVoucherUrl && m.oxxoPendingUntil?.toDate?.() && m.oxxoPendingUntil.toDate().getTime() > Date.now();
+
+  async function updateCard() {
+    if (!firebaseUser) return;
+    setError(""); setPaying("card");
+    try {
+      const res = await fetch("/api/memberships/billing-portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
+        body: JSON.stringify({ membershipId: m.id }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.url) throw new Error(j.error || "No se pudo abrir.");
+      window.location.href = j.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo abrir.");
+      setPaying(null);
+    }
+  }
+
+  async function pay(method: "card" | "oxxo") {
+    if (!firebaseUser) return;
+    setError(""); setPaying(method);
+    try {
+      const res = await fetch("/api/memberships/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
+        body: JSON.stringify({ membershipId: m.id, method }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.url) throw new Error(j.error || "No se pudo abrir el pago.");
+      window.location.href = j.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo abrir el pago.");
+      setPaying(null);
+    }
+  }
+
+  const btn = "px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-60";
+  const primary = `${btn} bg-[var(--color-spm-red)] hover:bg-[var(--color-spm-red-dark)] text-white`;
+  const secondary = `${btn} border ${isDark ? "border-white/15 text-slate-200 hover:border-[var(--color-spm-red-light)]" : "border-gray-300 text-slate-700 hover:border-[var(--color-spm-red-light)]"}`;
+  const oxxoBtn = (
+    <button onClick={() => pay("oxxo")} disabled={!!paying} className={secondary}>
+      {paying === "oxxo" ? <Loader2 size={15} className="animate-spin" /> : <Store size={15} />} Pagar en OXXO
+    </button>
+  );
+
+  return (
+    <div className={`rounded-2xl border p-5 ${isDark ? "bg-slate-900 border-white/5" : "bg-white border-gray-100 shadow-sm"}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <BadgeCheck size={18} className="text-[var(--color-spm-orange)]" />
+            <span className={`font-semibold ${strong}`}>{m.vehicle.typeName} · {m.vehicle.range}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${(overdueOxxo ? STATUS_UI.atrasada : STATUS_UI[m.status]).cls}`}>
+              {(overdueOxxo ? STATUS_UI.atrasada : STATUS_UI[m.status]).label}
+            </span>
+          </div>
+          <p className={`text-sm mt-1 ${muted}`}>
+            {m.vehicle.model ? `${m.vehicle.model} · ` : ""}{m.services.length} servicios · folio {folio}
+          </p>
+        </div>
+        <div className="sm:text-right">
+          <div className={`font-display font-bold text-2xl ${strong}`}>{fmtMXN(amount)}<span className={`text-sm font-medium ${muted}`}>/{period}</span></div>
+          <div className={`text-xs ${muted}`}>{m.confirmedAmount ? "Precio confirmado" : "Precio estimado"} · plazo 12 meses</div>
+        </div>
+      </div>
+
+      {(m.status === "activa" || m.status === "atrasada" || m.status === "finalizada") && (
+        <div className="mt-4">
+          <div className={`flex justify-between text-xs mb-1 ${muted}`}>
+            <span>{made} de {total} pagos</span>
+            <span>{m.paymentMethod === "card" ? "Cobro automático con tarjeta" : "Pago en OXXO"}{next && m.status !== "finalizada" ? ` · próximo: ${next.toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}` : ""}</span>
+          </div>
+          <div className={`h-2 rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-slate-100"}`}>
+            <div className="h-full bg-[var(--color-spm-orange)] rounded-full" style={{ width: `${Math.min(100, (made / total) * 100)}%` }} />
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4">
+        {m.status === "pendiente" && (
+          <p className={`text-xs flex items-center gap-1.5 ${muted}`}>
+            <Clock size={12} /> Estamos revisando tu vehículo. Cuando confirmemos el precio podrás pagar aquí.{" "}
+            <a className="text-[var(--color-spm-red-light)] hover:underline" target="_blank" rel="noopener noreferrer"
+               href={`https://wa.me/${MEMBERSHIP_CONFIG.whatsapp}?text=${encodeURIComponent(`Hola, quiero activar mi membresía folio ${folio}.`)}`}>
+              Escríbenos por WhatsApp
+            </a>
+          </p>
+        )}
+
+        {m.status === "por_pagar" && (
+          <>
+            <p className={`text-sm mb-3 ${strong}`}>¡Tu membresía está lista! Elige cómo pagar:</p>
+            <div className="grid sm:grid-cols-2 gap-2">
+              <button onClick={() => pay("card")} disabled={!!paying} className={primary}>
+                {paying === "card" ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />} Tarjeta · cobro automático cada {period}
+              </button>
+              {oxxoBtn}
+            </div>
+            <p className={`text-xs mt-2 ${muted}`}>Con tarjeta no te preocupas: se cobra solo cada {period} y termina a los 12 meses. Con OXXO generas una ficha cada {period} desde aquí.</p>
+          </>
+        )}
+
+        {m.status === "activa" && m.paymentMethod === "oxxo" && (
+          pendingVoucher ? (
+            <a href={m.oxxoVoucherUrl!} target="_blank" rel="noopener noreferrer" className={`${secondary} w-full sm:w-auto inline-flex`}>
+              <Store size={15} /> Ver mi ficha OXXO pendiente
+            </a>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {oxxoBtn}
+              <span className={`text-xs ${overdueOxxo ? "text-red-400" : muted}`}>
+                {overdueOxxo ? "Tu pago ya venció: genera tu ficha para seguir al corriente." : "Puedes pagar por adelantado cuando quieras."}
+              </span>
+            </div>
+          )
+        )}
+
+        {m.status === "activa" && m.paymentMethod === "card" && (
+          <p className={`text-xs ${muted}`}>Todo en orden: el siguiente cobro se hace solo a tu tarjeta.</p>
+        )}
+
+        {m.status === "atrasada" && (
+          <div className="space-y-2">
+            <p className="text-sm text-red-400 flex items-center gap-1.5"><AlertTriangle size={14} />
+              {m.paymentMethod === "card"
+                ? "No pudimos cobrar a tu tarjeta. Lo volveremos a intentar en unos días; si cambiaste de tarjeta, actualízala aquí."
+                : "Tienes un pago pendiente."}
+            </p>
+            {m.paymentMethod === "card"
+              ? <button onClick={updateCard} disabled={!!paying} className={primary}>
+                  {paying ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />} Actualizar mi tarjeta
+                </button>
+              : pendingVoucher
+                ? <a href={m.oxxoVoucherUrl!} target="_blank" rel="noopener noreferrer" className={`${secondary} inline-flex`}><Store size={15} /> Ver mi ficha OXXO pendiente</a>
+                : oxxoBtn}
+          </div>
+        )}
+
+        {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+      </div>
     </div>
   );
 }

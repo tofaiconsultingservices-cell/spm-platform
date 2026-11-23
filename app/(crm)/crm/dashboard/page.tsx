@@ -17,6 +17,7 @@ import {
   Sun, Moon, Globe, Loader2, TrendingUp, DollarSign,
   CheckCircle2, Clock, AlertCircle, Zap, Plus,
   ChevronRight, RefreshCw,
+  BadgeCheck,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/crm/clientes",       label: "Clientes",        icon: Users },
   { href: "/crm/mecanicos",      label: "Mecánicos",       icon: Wrench },
   { href: "/crm/pagos",          label: "Pagos",           icon: CreditCard },
+  { href: "/crm/membresias",     label: "Membresías",      icon: BadgeCheck },
   { href: "/crm/facturas",       label: "Facturas",        icon: FileText },
   { href: "/crm/contact-center", label: "Contact Center",  icon: Phone },
   { href: "/crm/reportes",       label: "Reportes",        icon: BarChart3 },

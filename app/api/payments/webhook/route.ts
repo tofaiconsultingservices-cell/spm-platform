@@ -1,7 +1,8 @@
 /**
  * POST /api/payments/webhook
  *
- * Events handled:
+ * Events handled (membresías: ver lib/payments/memberships.ts, además
+ *   invoice.paid, invoice.payment_failed, customer.subscription.deleted):
  *   checkout.session.completed            — Tarjeta pagada | OXXO voucher generado
  *   checkout.session.async_payment_succeeded — OXXO pagado en tienda
  *   checkout.session.async_payment_failed    — Voucher OXXO expirado sin pago
@@ -16,6 +17,7 @@ import { verifyWebhookSignature }      from "@/lib/payments/stripe-client";
 import { getAdminDb }                  from "@/lib/firebase-admin";
 import { FieldValue }                  from "firebase-admin/firestore";
 import { sendWhatsApp }                from "@/lib/notifications/whatsapp";
+import { handleMembershipEvent }       from "@/lib/payments/memberships";
 
 export async function POST(req: NextRequest) {
   const rawBody   = await req.text();
@@ -34,6 +36,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // ── Membresías (suscripciones con tarjeta y fichas OXXO) ───────────────
+    if (await handleMembershipEvent(event)) {
+      return NextResponse.json({ received: true });
+    }
+
     // ── checkout.session.completed ─────────────────────────────────────────
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as {
