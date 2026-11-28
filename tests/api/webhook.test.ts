@@ -21,6 +21,7 @@ describe("POST /api/payments/webhook", () => {
 
     (getAdminDb as ReturnType<typeof vi.fn>).mockReturnValue({
       collection: vi.fn(() => ({
+        doc: vi.fn(() => ({ update: mockUpdate })),
         where: vi.fn(() => ({
           limit: vi.fn(() => ({
             get: mockGet,
@@ -88,7 +89,7 @@ describe("POST /api/payments/webhook", () => {
 
     mockGet.mockResolvedValue({
       empty: false,
-      docs: [{ ref: { update: mockUpdate } }],
+      docs: [{ ref: { update: mockUpdate }, data: () => ({}) }],
     });
 
     const res = await callWebhook(JSON.stringify({}));
@@ -123,7 +124,7 @@ describe("POST /api/payments/webhook", () => {
 
     mockGet.mockResolvedValue({
       empty: false,
-      docs: [{ ref: { update: mockUpdate } }],
+      docs: [{ ref: { update: mockUpdate }, data: () => ({}) }],
     });
 
     const res = await callWebhook(JSON.stringify({}));

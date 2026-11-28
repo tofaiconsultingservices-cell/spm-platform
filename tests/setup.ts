@@ -20,6 +20,8 @@ vi.mock("firebase/firestore", () => ({
   updateDoc: vi.fn(),
   addDoc: vi.fn(),
   getDoc: vi.fn(),
+  getDocs: vi.fn(),
+  where: vi.fn(),
   serverTimestamp: vi.fn(() => ({ _type: "serverTimestamp" })),
   query: vi.fn(),
   orderBy: vi.fn(),
